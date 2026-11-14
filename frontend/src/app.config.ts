@@ -1,0 +1,36 @@
+/**
+ * Configuración de la aplicación: nombre, menú y vistas.
+ * Para añadir una vista: 1) agrega su id a `ViewId`, 2) agrégala a `NAV`, 3) regístrala en `VIEWS` (src/App.tsx).
+ */
+import { Database, FlaskConical, ScanSearch } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+
+export const APP = {
+  name: 'CodePredict AI',
+  tagline: 'Limpieza e inferencia',
+  footer: ['Estadística Inferencial y Ciencia de Datos', 'Unified Bug Dataset · nivel archivo'],
+}
+
+export type ViewId = 'fuente' | 'limpieza' | 'inferencia'
+export const DEFAULT_VIEW: ViewId = 'fuente'
+
+export interface NavItem { id: ViewId; label: string; short: string; title: string; icon: LucideIcon }
+export interface NavGroup { group: string; items: NavItem[] }
+
+export const NAV: NavGroup[] = [
+  {
+    group: 'Proceso de datos',
+    items: [
+      { id: 'fuente', label: 'Fuente y perfil', short: 'Fuente', title: 'Fuente y perfil de los datos', icon: Database },
+      { id: 'limpieza', label: 'Limpieza visual', short: 'Limpieza', title: 'Limpieza paso a paso', icon: ScanSearch },
+    ],
+  },
+  {
+    group: 'Análisis',
+    items: [{ id: 'inferencia', label: 'Inferencia', short: 'Inferencia', title: 'Inferencia estadística con Ada', icon: FlaskConical }],
+  },
+]
+
+export const ALL_ITEMS: NavItem[] = NAV.flatMap((g) => g.items)
+export const VIEW_IDS = ALL_ITEMS.map((i) => i.id)
+export const itemOf = (id: ViewId) => ALL_ITEMS.find((i) => i.id === id)!
