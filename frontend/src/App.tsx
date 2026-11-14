@@ -9,11 +9,13 @@ import { FuenteView } from './views/FuenteView'
 
 // Las vistas pesadas se cargan al abrirlas (lazy). Para añadir una vista: créala en src/views y regístrala aquí.
 const LimpiezaView = lazy(() => import('./views/LimpiezaView').then((m) => ({ default: m.LimpiezaView })))
+const CuadernoView = lazy(() => import('./views/CuadernoView').then((m) => ({ default: m.CuadernoView })))
 const InferenciaView = lazy(() => import('./views/InferenciaView').then((m) => ({ default: m.InferenciaView })))
 
 const VIEWS: Record<ViewId, ComponentType> = {
   fuente: FuenteView,
   limpieza: LimpiezaView,
+  cuaderno: CuadernoView,
   inferencia: InferenciaView,
 }
 

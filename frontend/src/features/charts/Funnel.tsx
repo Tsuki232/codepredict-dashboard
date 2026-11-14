@@ -26,6 +26,21 @@ function show(v: unknown): string {
   return String(v)
 }
 
+/** Conteos de un paso y con qué dos métodos se comprobó. */
+export function StepDetails({ step }: { step: Step }) {
+  const details = Object.entries(step.detail).filter(([k]) => !HIDDEN.has(k))
+  return (
+    <>
+      <dl className="readout">
+        {details.map(([k, v]) => (
+          <div key={k}><dt>{LABELS[k] ?? k}</dt><span className="dots" aria-hidden /><dd>{show(v)}</dd></div>
+        ))}
+      </dl>
+      <p className="small mt-3">Cómo se comprobó: {step.methods.join(' · ') || '—'}</p>
+    </>
+  )
+}
+
 /**
  * Embudo de limpieza: una barra por regla con las filas que sobreviven (azul) y las que se quitan (rojo).
  * Cada paso se abre para ver sus conteos y con qué dos métodos se comprobó.
@@ -38,7 +53,6 @@ export function Funnel({ steps, total }: { steps: Step[]; total: number }) {
         const keep = total ? (s.after / total) * 100 : 0
         const lost = total ? (s.removed / total) * 100 : 0
         const isOpen = open === s.id
-        const details = Object.entries(s.detail).filter(([k]) => !HIDDEN.has(k))
         return (
           <li key={s.id} className={i ? 'border-t' : ''} style={{ borderColor: 'var(--rule)' }}>
             <button type="button" className="flex w-full flex-col gap-2 py-3 text-left" aria-expanded={isOpen}
@@ -61,16 +75,7 @@ export function Funnel({ steps, total }: { steps: Step[]; total: number }) {
                 </span>
               </span>
             </button>
-            {isOpen && (
-              <div className="pb-4 pl-6">
-                <dl className="readout">
-                  {details.map(([k, v]) => (
-                    <div key={k}><dt>{LABELS[k] ?? k}</dt><span className="dots" aria-hidden /><dd>{show(v)}</dd></div>
-                  ))}
-                </dl>
-                <p className="small mt-3">Cómo se comprobó: {s.methods.join(' · ') || '—'}</p>
-              </div>
-            )}
+            {isOpen && <div className="pb-4 pl-6"><StepDetails step={s} /></div>}
           </li>
         )
       })}

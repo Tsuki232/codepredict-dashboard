@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { DEFAULT_VIEW, VIEW_IDS, type ViewId } from '../app.config'
 import { api } from '../lib/api'
-import type { Health, InferenceResult, Manifest, Preview, Profile, Rules } from './types'
+import type { Health, InferenceResult, Manifest, NbCell, NbResult, Preview, Profile, Rules } from './types'
 
 const viewFromHash = (): ViewId => {
   const h = window.location.hash.replace(/^#\/?/, '') as ViewId
@@ -58,6 +58,14 @@ interface State {
   inferenceBusy: boolean
   inferenceError: string | null
 
+  nbCells: NbCell[] | null
+  nbResults: Record<string, NbResult>
+  nbStale: string[]
+  nbRunning: string | null
+  nbRunAll: boolean
+  nbError: { cell: string; message: string } | null
+  nbRulesKey: string | null
+
   setTheme: (t: 'dark' | 'light') => void
   setView: (v: ViewId) => void
   init: () => Promise<void>
@@ -66,6 +74,11 @@ interface State {
   setAlpha: (a: number) => void
   setAlternative: (a: Alternative) => void
   runInference: () => Promise<void>
+  loadNotebook: () => Promise<void>
+  runCell: (id: string) => Promise<boolean>
+  runAllCells: () => Promise<void>
+  stopRunAll: () => void
+  resetNotebook: () => Promise<void>
 }
 
 export const useStore = create<State>((set, get) => {
@@ -86,6 +99,7 @@ export const useStore = create<State>((set, get) => {
     rules: FALLBACK_RULES, preview: null, previewBusy: false, previewError: null,
     applied: null, applying: false, applyError: null,
     alpha: 0.05, alternative: 'two-sided', inference: null, inferenceBusy: false, inferenceError: null,
+    nbCells: null, nbResults: {}, nbStale: [], nbRunning: null, nbRunAll: false, nbError: null, nbRulesKey: null,
 
     setTheme: (theme) => {
       document.documentElement.dataset.theme = theme
@@ -164,6 +178,56 @@ export const useStore = create<State>((set, get) => {
       } catch (e) {
         set({ inferenceBusy: false, inferenceError: (e as Error).message })
       }
+    },
+
+    loadNotebook: async () => {
+      if (get().nbCells) return
+      try {
+        const r = await api.nbCells()
+        set({ nbCells: r.cells })
+      } catch (e) {
+        set({ nbError: { cell: '', message: (e as Error).message } })
+      }
+    },
+
+    runCell: async (id) => {
+      const { rules, alpha, alternative } = get()
+      set({ nbRunning: id, nbError: null })
+      try {
+        const r = await api.nbRun(id, rules, alpha, alternative)
+        set((s) => ({
+          nbResults: { ...s.nbResults, [id]: r }, nbRunning: null, nbRulesKey: JSON.stringify(rules),
+          nbStale: [...new Set([...s.nbStale.filter((c) => c !== id), ...r.invalidated])],
+        }))
+        return true
+      } catch (e) {
+        set({ nbRunning: null, nbError: { cell: id, message: (e as Error).message } })
+        return false
+      }
+    },
+
+    // Ejecuta todo desde cero, celda por celda, parando en la primera que falle.
+    runAllCells: async () => {
+      const cells = get().nbCells
+      if (!cells || get().nbRunAll) return
+      set({ nbRunAll: true, nbResults: {}, nbStale: [], nbError: null })
+      try {
+        await api.nbReset()
+      } catch (e) {
+        set({ nbRunAll: false, nbError: { cell: '', message: (e as Error).message } })
+        return
+      }
+      for (const c of cells) {
+        if (!get().nbRunAll) break
+        if (!(await get().runCell(c.id))) break
+      }
+      set({ nbRunAll: false })
+    },
+    stopRunAll: () => set({ nbRunAll: false }),
+
+    resetNotebook: async () => {
+      try { await api.nbReset() } catch { /* se reinicia igual en pantalla */ }
+      set({ nbResults: {}, nbStale: [], nbError: null, nbRunAll: false, nbRulesKey: null })
     },
   }
 })

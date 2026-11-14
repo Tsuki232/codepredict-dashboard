@@ -254,6 +254,34 @@ table { border-collapse: collapse; }
 .row-btn { font: inherit; color: inherit; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; }
 .row-btn:hover { text-decoration: underline; }
 
+/* Cuaderno: código y salidas */
+.nb-cell { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 0 12px; padding: 16px 0; border-top: 1px solid var(--rule); }
+.nb-cell:first-child { border-top: 0; }
+.nb-cell[data-stale="true"] { opacity: 0.6; }
+.nb-gutter { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.nb-play {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; color: var(--ink); background: transparent;
+  border: 1px solid var(--rule); cursor: pointer; transition: background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+}
+.nb-play:hover:not(:disabled) { border-color: var(--ink-2); background: var(--grid); }
+.nb-play:disabled { opacity: 0.45; cursor: not-allowed; }
+.nb-play[data-state="done"] { color: var(--ok); }
+.nb-count { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.75rem; color: var(--muted); }
+.code {
+  margin: 0; padding: 12px 14px; overflow: auto; max-height: 300px; white-space: pre; line-height: 1.6; font-size: 0.8125rem; tab-size: 4;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--bg); border: 1px solid var(--rule); border-radius: 8px;
+}
+.out {
+  margin: 10px 0 0; padding: 10px 14px; overflow-x: auto; white-space: pre; line-height: 1.55; font-size: 0.8125rem;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; border-left: 3px solid var(--serie-1); background: color-mix(in srgb, var(--grid) 45%, transparent);
+}
+.tok-k { color: var(--serie-1); font-weight: 600; }
+.tok-c { color: var(--muted); font-style: italic; }
+.tok-s { color: var(--ok); }
+.tok-n { color: var(--warn); }
+@keyframes nb-spin { to { transform: rotate(360deg); } }
+.nb-spin { animation: nb-spin 0.9s linear infinite; }
+
 /* Fórmulas */
 .math {
   margin: 0; padding: 14px 16px; overflow-x: auto; white-space: pre; line-height: 1.75; font-size: 0.9375rem;

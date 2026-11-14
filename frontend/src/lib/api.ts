@@ -1,4 +1,4 @@
-import type { Health, InferenceResult, Manifest, Preview, Profile, Rules } from '../state/types'
+import type { Health, InferenceResult, Manifest, NbCell, NbResult, Preview, Profile, Rules } from '../state/types'
 
 /** Cabeceras comunes de la API (incluye la clave si se definió VITE_API_KEY). */
 export function apiHeaders(): Record<string, string> {
@@ -42,4 +42,7 @@ export const api = {
   status: () => call<{ applied: boolean; manifest: Manifest | null }>('/api/clean/status', undefined, 8000),
   apply: (rules: Rules) => post<Manifest>('/api/clean/apply', rules),
   inference: (alpha: number, alternative: string) => post<InferenceResult>('/api/inference', { alpha, alternative }),
+  nbCells: () => call<{ cells: NbCell[]; done: Record<string, number>; count: number }>('/api/notebook/cells', undefined, 8000),
+  nbReset: () => post<{ done: Record<string, number> }>('/api/notebook/reset', {}),
+  nbRun: (cell_id: string, rules: Rules, alpha: number, alternative: string) => post<NbResult>('/api/notebook/run', { cell_id, rules, alpha, alternative }),
 }

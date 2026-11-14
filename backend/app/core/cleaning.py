@@ -220,73 +220,92 @@ def _check(step: Step, duck: _Duck | None, pandas_removed: int, df: pd.DataFrame
     step.detail["sql_removed"] = got
 
 
-def _run(raw: pd.DataFrame, rules: Rules, duck: _Duck | None) -> Result:
-    df = raw.copy()
-    steps: list[Step] = []
-    n_raw = len(df)
-    steps.append(Step("carga", "Filas leídas del CSV", n_raw, n_raw, {"columnas": list(df.columns)}, True if duck else None, ["conteo directo"]))
+def rule_integrity(df: pd.DataFrame) -> pd.Series:
+    """Filas inválidas: con datos faltantes, negativos, LOC < LLOC o LOC <= 0."""
+    return pd.concat(integrity_masks(df), axis=1).any(axis=1)
 
-    # 1 · integridad
-    if rules.integrity:
-        masks = integrity_masks(df)
-        bad = pd.concat(masks, axis=1).any(axis=1)
-        st = Step("integridad", "Integridad (faltantes, negativos, LOC < LLOC, LOC ≤ 0)", len(df), int((~bad).sum()),
-                  {k: int(m.sum()) for k, m in masks.items()})
-        _check(st, duck, int(bad.sum()), df, _integrity_sql())
-        steps.append(st)
-        df = df[~bad]
 
-    # 2 · duplicados exactos
-    if rules.drop_exact_duplicates:
-        dup = df.duplicated(keep="first")
-        st = Step("duplicados", "Duplicados exactos (las 11 columnas iguales)", len(df), int((~dup).sum()))
-        _check(st, duck, int(dup.sum()), df, "SELECT count(*) - (SELECT count(*) FROM (SELECT DISTINCT * FROM t)) FROM t")
-        steps.append(st)
-        df = df[~dup]
+def rule_exact_duplicates(df: pd.DataFrame) -> pd.Series:
+    """Copias exactas: las 11 columnas iguales a una fila anterior (se conserva la primera)."""
+    return df.duplicated(keep="first")
 
-    # 3 · rutas repetidas (independencia)
+
+def rule_paths(df: pd.DataFrame, policy: str) -> tuple[pd.Series, str]:
+    """Rutas repetidas (LongName). Devuelve la máscara de filas a quitar y la consulta SQL equivalente."""
+    if policy == "keep_first":      # una fila por archivo: la primera aparición
+        return df.duplicated(subset=["LongName"], keep="first"), "SELECT count(*) - count(DISTINCT coalesce(\"LongName\", '<NULL>')) FROM t"
+    if policy == "drop_all":        # se descarta toda ruta que aparezca más de una vez
+        return df.duplicated(subset=["LongName"], keep=False), (
+            "SELECT count(*) FROM (SELECT count(*) OVER (PARTITION BY coalesce(\"LongName\", '<NULL>')) AS c FROM t) WHERE c > 1")
+    return pd.Series(False, index=df.index), "SELECT 0"
+
+
+def rule_outliers(df: pd.DataFrame, fences: dict[str, dict[str, float]], key: str) -> pd.Series:
+    """Atípicos extremos: McCC o LOC por encima del umbral (key = 'tukey3_upper' o 'p999_upper')."""
+    return (df["McCC"] > fences["McCC"][key]) | (df["LOC"] > fences["LOC"][key])
+
+
+PATH_LABELS = {"keep_all": "Rutas repetidas: se conservan todas", "keep_first": "Rutas repetidas: se deja la primera aparición",
+               "drop_all": "Rutas repetidas: se quitan todas las filas de esas rutas"}
+
+
+def step_integrity(df, rules, duck, ctx):
+    if not rules.integrity:
+        return df, None
+    masks = integrity_masks(df)
+    bad = rule_integrity(df)
+    st = Step("integridad", "Integridad (faltantes, negativos, LOC < LLOC, LOC ≤ 0)", len(df), int((~bad).sum()), {k: int(m.sum()) for k, m in masks.items()})
+    _check(st, duck, int(bad.sum()), df, _integrity_sql())
+    ctx["removed"] = df[bad]
+    return df[~bad], st
+
+
+def step_duplicates(df, rules, duck, ctx):
+    if not rules.drop_exact_duplicates:
+        return df, None
+    dup = rule_exact_duplicates(df)
+    st = Step("duplicados", "Duplicados exactos (las 11 columnas iguales)", len(df), int((~dup).sum()))
+    _check(st, duck, int(dup.sum()), df, "SELECT count(*) - (SELECT count(*) FROM (SELECT DISTINCT * FROM t)) FROM t")
+    ctx["removed"] = df[dup]
+    return df[~dup], st
+
+
+def step_paths(df, rules, duck, ctx):
     rep_all = df.duplicated(subset=["LongName"], keep=False)
-    repeated_paths = int(df.loc[rep_all, "LongName"].nunique())
     sizes = df.loc[rep_all].groupby("LongName").size()
-    info = {"filas_en_rutas_repetidas": int(rep_all.sum()), "rutas_repetidas": repeated_paths,
+    info = {"filas_en_rutas_repetidas": int(rep_all.sum()), "rutas_repetidas": int(df.loc[rep_all, "LongName"].nunique()),
             "veces_max": int(sizes.max()) if len(sizes) else 1, "politica": rules.path_policy}
-    if rules.path_policy == "keep_first":
-        drop = df.duplicated(subset=["LongName"], keep="first")
-        sql = "SELECT count(*) - count(DISTINCT coalesce(\"LongName\", '<NULL>')) FROM t"
-    elif rules.path_policy == "drop_all":
-        drop = rep_all
-        sql = "SELECT count(*) FROM (SELECT count(*) OVER (PARTITION BY coalesce(\"LongName\", '<NULL>')) AS c FROM t) WHERE c > 1"
-    else:
-        drop = pd.Series(False, index=df.index)
-        sql = "SELECT 0"
-    st = Step("rutas", {"keep_all": "Rutas repetidas: se conservan todas", "keep_first": "Rutas repetidas: se deja la primera aparición",
-                        "drop_all": "Rutas repetidas: se quitan todas las filas de esas rutas"}[rules.path_policy], len(df), int((~drop).sum()), info)
+    drop, sql = rule_paths(df, rules.path_policy)
+    st = Step("rutas", PATH_LABELS[rules.path_policy], len(df), int((~drop).sum()), info)
     _check(st, duck, int(drop.sum()), df, sql)
-    steps.append(st)
-    df = df[~drop]
+    ctx["removed"] = df[drop]
+    return df[~drop], st
 
-    # 4 · columnas constantes
-    dropped: list[str] = []
-    if rules.drop_constant_columns:
-        const = [c for c in NUM if c not in REQUIRED and df[c].nunique(dropna=False) == 1]
-        st = Step("constantes", "Columnas constantes (no aportan información)", len(df), len(df),
-                  {"columnas": {c: float(df[c].iloc[0]) for c in const} if len(df) else {}})
-        st.methods = ["pandas (nunique)"]
-        if duck:
-            sql_const = [c for c in NUM if c not in REQUIRED and int(duck.q(df, f"SELECT count(DISTINCT {_quote(c)}) FROM t")) == 1
-                         and int(duck.q(df, f"SELECT count(*) FROM t WHERE {_quote(c)} IS NULL")) == 0]
-            st.verified = sorted(sql_const) == sorted(const)
-            st.methods.append("DuckDB (COUNT DISTINCT)")
-        steps.append(st)
-        dropped = const
-        df = df.drop(columns=const)
 
-    # 5 · atípicos extremos
+def step_constants(df, rules, duck, ctx):
+    if not rules.drop_constant_columns:
+        return df, None
+    const = [c for c in NUM if c not in REQUIRED and df[c].nunique(dropna=False) == 1]
+    st = Step("constantes", "Columnas constantes (no aportan información)", len(df), len(df),
+              {"columnas": {c: float(df[c].iloc[0]) for c in const} if len(df) else {}})
+    st.methods = ["pandas (nunique)"]
+    if duck:
+        sql_const = [c for c in NUM if c not in REQUIRED and int(duck.q(df, f"SELECT count(DISTINCT {_quote(c)}) FROM t")) == 1
+                     and int(duck.q(df, f"SELECT count(*) FROM t WHERE {_quote(c)} IS NULL")) == 0]
+        st.verified = sorted(sql_const) == sorted(const)
+        st.methods.append("DuckDB (COUNT DISTINCT)")
+    ctx["dropped"] = const
+    ctx["removed"] = df.iloc[0:0]
+    return df.drop(columns=const), st
+
+
+def step_outliers(df, rules, duck, ctx):
     fences = fences_of(df) if len(df) else {}
-    flagged = {k: int(_outlier_mask(df, fences, k).sum()) for k in ("tukey3_upper", "p999_upper")} if fences else {}
+    ctx["fences"] = fences
+    flagged = {k: int(rule_outliers(df, fences, k).sum()) for k in ("tukey3_upper", "p999_upper")} if fences else {}
     if rules.outlier_policy != "keep" and fences:
         key = "tukey3_upper" if rules.outlier_policy == "tukey3" else "p999_upper"
-        out = _outlier_mask(df, fences, key)
+        out = rule_outliers(df, fences, key)
         by_col = {c: int((df[c] > fences[c][key]).sum()) for c in ("McCC", "LOC")}
         st = Step("atipicos", "Atípicos extremos " + ("(> Q3 + 3·RIC)" if key == "tukey3_upper" else "(> percentil 99,9)"),
                   len(df), int((~out).sum()), {"umbral_mccc": fences["McCC"][key], "umbral_loc": fences["LOC"][key], "por_columna": by_col,
@@ -296,19 +315,20 @@ def _run(raw: pd.DataFrame, rules: Rules, duck: _Duck | None) -> Result:
         if duck and st.verified:
             st.verified = _fence_sql_check(duck, df, fences)
             st.methods[-1] += " · cuantiles con quantile_cont"
-        steps.append(st)
-        df = df[~out]
-    else:
-        st = Step("atipicos", "Atípicos extremos: se conservan (solo se señalan)", len(df), len(df),
-                  {"politica": "keep", "se_quitarian_tukey3": flagged.get("tukey3_upper"), "se_quitarian_p999": flagged.get("p999_upper"),
-                   "umbral_tukey3_mccc": fences.get("McCC", {}).get("tukey3_upper"), "umbral_tukey3_loc": fences.get("LOC", {}).get("tukey3_upper")})
-        st.methods = ["pandas (cuantiles)"]
-        if duck and fences:
-            st.verified = _fence_sql_check(duck, df, fences)
-            st.methods.append("DuckDB (quantile_cont)")
-        steps.append(st)
+        ctx["removed"] = df[out]
+        return df[~out], st
+    st = Step("atipicos", "Atípicos extremos: se conservan (solo se señalan)", len(df), len(df),
+              {"politica": "keep", "se_quitarian_tukey3": flagged.get("tukey3_upper"), "se_quitarian_p999": flagged.get("p999_upper"),
+               "umbral_tukey3_mccc": fences.get("McCC", {}).get("tukey3_upper"), "umbral_tukey3_loc": fences.get("LOC", {}).get("tukey3_upper")})
+    st.methods = ["pandas (cuantiles)"]
+    if duck and fences:
+        st.verified = _fence_sql_check(duck, df, fences)
+        st.methods.append("DuckDB (quantile_cont)")
+    ctx["removed"] = df.iloc[0:0]
+    return df, st
 
-    # 6 · etiquetas fijadas de antemano
+
+def step_labels(df, rules, duck, ctx):
     df = df.copy()
     df["defectuoso"] = (df["bug"] > rules.bug_threshold).astype("int8")
     df["compleja"] = (df["McCC"] > rules.mccc_threshold).astype("int8")
@@ -320,8 +340,25 @@ def _run(raw: pd.DataFrame, rules: Rules, duck: _Duck | None) -> Result:
         sc = int(duck.q(df, f"SELECT count(*) FROM t WHERE \"McCC\" > {rules.mccc_threshold!r}"))
         st.verified = sd == st.detail["defectuosos"] and sc == st.detail["complejas"]
         st.methods.append("DuckDB (COUNT con filtro)")
-    steps.append(st)
-    return Result(df, steps, dropped, fences)
+    ctx["removed"] = df.iloc[0:0]
+    return df, st
+
+
+# Orden de los pasos: el cuaderno y la tubería usan exactamente estas mismas funciones.
+STEP_FUNCS = {"integridad": step_integrity, "duplicados": step_duplicates, "rutas": step_paths,
+              "constantes": step_constants, "atipicos": step_outliers, "etiquetas": step_labels}
+
+
+def _run(raw: pd.DataFrame, rules: Rules, duck: _Duck | None) -> Result:
+    df = raw.copy()
+    n_raw = len(df)
+    steps = [Step("carga", "Filas leídas del CSV", n_raw, n_raw, {"columnas": list(df.columns)}, True if duck else None, ["conteo directo"])]
+    ctx: dict = {"dropped": [], "fences": {}}
+    for fn in STEP_FUNCS.values():
+        df, st = fn(df, rules, duck, ctx)
+        if st is not None:
+            steps.append(st)
+    return Result(df, steps, ctx["dropped"], ctx["fences"])
 
 
 # ----------------------------------------------------------------------------- resúmenes para la interfaz

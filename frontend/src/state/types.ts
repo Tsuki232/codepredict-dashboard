@@ -136,3 +136,11 @@ export interface InferenceResult {
   independence: { repeated_path_rows: number; note: string }
   hist: HistData
 }
+
+/** Cuaderno celda por celda (backend/app/core/notebook.py). */
+export interface NbCell { id: string; title: string; about: string; code: string; needs_ada: boolean }
+export type NbBlock =
+  | { type: 'text'; text: string }
+  | { type: 'table'; title: string; columns: string[]; rows: (string | number)[][] }
+  | { type: 'step'; step: Step }
+export interface NbResult { cell_id: string; execution_count: number; seconds: number; blocks: NbBlock[]; invalidated: string[] }

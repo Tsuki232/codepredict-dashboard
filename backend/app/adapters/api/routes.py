@@ -6,9 +6,46 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.core import ada_engine, cleaning, config, inference, workspace
+from app.core import ada_engine, cleaning, config, inference, notebook, workspace
 
 router = APIRouter(prefix="/api")
+
+
+# ----------------------------------------------------------------------------- cuaderno (celda por celda)
+
+
+class CellRequest(BaseModel):
+    cell_id: str
+    rules: cleaning.Rules = cleaning.Rules()
+    alpha: float = 0.05
+    alternative: Literal["two-sided", "greater", "less"] = "two-sided"
+
+
+@router.get("/notebook/cells")
+def notebook_cells() -> dict:
+    return {"cells": notebook.catalog(), **notebook.status()}
+
+
+@router.post("/notebook/reset")
+def notebook_reset() -> dict:
+    notebook.reset()
+    return notebook.status()
+
+
+@router.post("/notebook/run")
+def notebook_run(req: CellRequest) -> dict:
+    try:
+        return notebook.run_cell(req.cell_id, req.rules, req.alpha, req.alternative)
+    except KeyError as e:
+        raise HTTPException(404, f"No existe la celda {e}") from e
+    except notebook.NotReady as e:
+        raise HTTPException(409, str(e)) from e
+    except ada_engine.AdaNotReady as e:
+        raise HTTPException(503, str(e)) from e
+    except workspace.NotVerified as e:
+        raise HTTPException(409, str(e)) from e
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(422, str(e)) from e
 
 
 @router.get("/health")
