@@ -1,22 +1,18 @@
 import { Loader } from 'lucide-react'
 import { useEffect } from 'react'
+import { Bars } from '../features/charts/Bars'
 import { Interval } from '../features/charts/Interval'
 import { Legend, LogHistogram } from '../features/charts/LogHistogram'
 import { Table2x2 } from '../features/charts/Table2x2'
 import { fmt, fmtInt, fmtP, fmtPct, fmtSig } from '../lib/format'
+import { expectedOf } from '../lib/stats'
 import { useStore } from '../state/store'
-import type { AdaTest, Table2x2 as Table2x2Counts } from '../state/types'
+import type { AdaTest } from '../state/types'
 import { Panel, Readout, Row } from '../ui/Panel'
 import { SegmentedTabs } from '../ui/SegmentedTabs'
 import { Verified } from '../ui/Verified'
 
 const ALT_TEXT = { 'two-sided': 'μ₁ ≠ μ₂', greater: 'μ₁ > μ₂', less: 'μ₁ < μ₂' } as const
-
-/** Frecuencias esperadas si C y D fueran independientes: E = (total de fila × total de columna) / n. */
-function expectedOf(t: Table2x2Counts): number[][] {
-  const rC = t.C_D + t.C_ND, rN = t.NC_D + t.NC_ND, cD = t.C_D + t.NC_D, cN = t.C_ND + t.NC_ND, n = rC + rN
-  return [[(rC * cD) / n, (rC * cN) / n], [(rN * cD) / n, (rN * cN) / n]]
-}
 
 const effectShort = (name?: string) => (!name ? '' : name.startsWith('g de') ? 'g de Hedges' : name.startsWith('prob') ? 'P(X>Y)' : '')
 
@@ -36,23 +32,6 @@ function Warnings({ items }: { items?: string[] }) {
     <ul className="small mt-3 flex flex-col gap-1" style={{ color: 'var(--warn)' }}>
       {items.map((w) => <li key={w}>⚠ {w}</li>)}
     </ul>
-  )
-}
-
-function Bars({ prior, posterior }: { prior: number; posterior: number }) {
-  const row = (label: string, v: number, color: string) => (
-    <div>
-      <div className="small mb-1 flex justify-between"><span>{label}</span><span className="font-semibold" style={{ color: 'var(--ink)' }}>{fmtPct(v)}</span></div>
-      <div className="h-[12px] overflow-hidden rounded-full" style={{ background: 'var(--grid)' }} aria-hidden>
-        <div className="h-full rounded-full" style={{ width: `${v * 100}%`, background: color, transition: 'width var(--t-slow) var(--ease)' }} />
-      </div>
-    </div>
-  )
-  return (
-    <div className="flex flex-col gap-3" role="img" aria-label={`Probabilidad de defecto: ${fmtPct(prior)} en general y ${fmtPct(posterior)} si el archivo es complejo`}>
-      {row('P(D): cualquier archivo', prior, 'var(--serie-3)')}
-      {row('P(D | C): sabiendo que es complejo', posterior, 'var(--serie-2)')}
-    </div>
   )
 }
 
@@ -270,7 +249,7 @@ conteo directo: ${fmtInt(res.bayes.counts.DC)} / ${fmtInt(res.bayes.counts.C)} =
 
           <Panel title="De dónde salen estos números">
             <Readout>
-              <Row label="Datos">{fmtInt(res.meta.rows)} filas · SHA-256 {res.meta.sha256.slice(0, 16)}…</Row>
+              <Row label="Datos">{fmtInt(res.meta.rows)} filas · SHA-256 {res.meta.sha256?.slice(0, 16)}…</Row>
               <Row label="Guardado">{new Date(res.meta.created_utc).toLocaleString('es-CO')}</Row>
               <Row label="Motor">Ada ({res.meta.ada.root})</Row>
               <Row label="α y hipótesis">{res.meta.alpha} · {ALT_TEXT[res.meta.alternative]}</Row>

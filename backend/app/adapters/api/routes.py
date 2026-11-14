@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.core import ada_engine, cleaning, config, inference, notebook, workspace
@@ -130,3 +131,38 @@ def run_inference(req: InferenceRequest) -> dict:
         raise HTTPException(409, str(e)) from e
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
+
+
+class LiveRequest(BaseModel):
+    rules: cleaning.Rules = cleaning.Rules()
+    alpha: float = 0.05
+    alternative: Literal["two-sided", "greater", "less"] = "two-sided"
+
+
+@router.post("/inference/live")
+def inference_live(req: LiveRequest) -> dict:
+    """Inferencia sobre las reglas de la pantalla (sin guardar). Alimenta el informe en vivo."""
+    try:
+        return inference.run_live(req.rules, req.alpha, req.alternative)
+    except ada_engine.AdaNotReady as e:
+        raise HTTPException(503, str(e)) from e
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+@router.get("/files/{name}")
+def download_file(name: str):
+    """Descarga del conjunto limpio y su manifiesto. Solo estos dos nombres fijos (nunca una ruta elegida por quien pide)."""
+    man = workspace.read_manifest()
+    if man is None:
+        raise HTTPException(404, "Todavía no hay un conjunto limpio guardado.")
+    if name == "manifest.json":
+        return FileResponse(workspace.manifest_path(), media_type="application/json", filename="manifest.json")
+    if name == "unified_file_limpio.csv":
+        p = config.assert_safe_output(config.work_dir() / workspace.CLEAN_NAME)
+        if not p.is_file() or cleaning.sha256_file(p) != man["output"]["sha256"]:
+            raise HTTPException(409, "El archivo limpio no coincide con su huella SHA-256: vuelve a guardarlo.")
+        return FileResponse(p, media_type="text/csv", filename=workspace.CLEAN_NAME)
+    raise HTTPException(404, "Archivo no disponible.")

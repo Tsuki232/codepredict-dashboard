@@ -142,3 +142,40 @@ def test_inferencia_con_ada_coincide_con_la_mano(tmp_path, monkeypatch, ada_real
     assert w["statistic"] == pytest.approx(t_hand, rel=1e-5) and w["df"] == pytest.approx(df_hand, rel=1e-5)
     assert w["verified"] is True and r["robust"]["verified"] is True
     assert 0.5 < r["robust"]["effect_size"]["value"] < 1
+
+
+def test_descargas_solo_de_los_dos_archivos_fijos(client, env):
+    assert client.get("/api/files/manifest.json").status_code == 404           # aún no hay limpio guardado
+    client.post("/api/clean/apply", json={})
+    m = client.get("/api/files/manifest.json")
+    assert m.status_code == 200 and m.json()["output"]["rows"] == 7
+    c = client.get("/api/files/unified_file_limpio.csv")
+    assert c.status_code == 200 and c.content.startswith(b"ID,Name,LongName")
+    assert hashlib.sha256(c.content).hexdigest() == m.json()["output"]["sha256"]
+    for evil in ("..%2F..%2Fsecret.txt", "Unified-file.csv", "x.csv"):
+        assert client.get(f"/api/files/{evil}").status_code == 404
+
+
+def test_inferencia_en_vivo_coincide_con_la_guardada_y_con_la_mano(tmp_path, monkeypatch, ada_real):
+    """Mismo caso de 100 archivos: la vista en vivo (sin guardar) debe dar lo mismo que el conjunto guardado."""
+    from app.core import inference
+
+    src = tmp_path / "in" / "Unified-file.csv"
+    src.parent.mkdir()
+    pd.DataFrame(table_rows(), columns=COLS).to_csv(src, index=False)
+    monkeypatch.setenv("CODEPREDICT_DATASET", str(src))
+    monkeypatch.setenv("CODEPREDICT_WORK", str(tmp_path / "work" / "codepredict"))
+    rules = Rules(drop_constant_columns=False)
+
+    live = inference.run_live(rules, 0.05, "two-sided")
+    assert live["meta"]["source"].startswith("vista en vivo") and live["meta"]["matches_saved"] is False   # todavía no hay guardado
+    assert live["chi_square"]["statistic"] == pytest.approx(50 / 3, abs=1e-4)                                # χ² = 50/3 calculado a mano
+    assert live["bayes"]["posterior"] == pytest.approx(0.6)
+
+    workspace.apply_cleaning(rules)
+    saved = inference.run(0.05, "two-sided")
+    for k in ("welch", "chi_square", "two_proportions", "table2x2"):
+        assert live[k] == saved[k]                                                                            # idénticos, no solo parecidos
+    inference._live_cached.cache_clear()
+    assert inference.run_live(rules, 0.05, "two-sided")["meta"]["matches_saved"] is True
+    assert inference.run_live(Rules(drop_constant_columns=False, outlier_policy="p999"), 0.05, "two-sided")["meta"]["matches_saved"] is False

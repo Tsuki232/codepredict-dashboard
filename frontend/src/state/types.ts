@@ -119,7 +119,7 @@ export interface AdaTest {
 export interface GroupStats { n: number; mean: number; sd: number; median: number; q1: number; q3: number; max: number }
 
 export interface InferenceResult {
-  meta: { alpha: number; alternative: 'two-sided' | 'greater' | 'less'; rows: number; sha256: string; created_utc: string; rules: Rules; ada: Health['ada'] }
+  meta: { alpha: number; alternative: 'two-sided' | 'greater' | 'less'; rows: number; sha256: string | null; created_utc: string; rules: Rules; ada: Health['ada']; source: string; matches_saved?: boolean }
   groups: { defectuosos: GroupStats; sin_defecto: GroupStats }
   table2x2: Table2x2
   probabilities: { p_d: number; p_c: number; p_d_given_c: number; p_d_given_nc: number; p_c_given_d: number; risk_diff: number; risk_ratio: number | null }

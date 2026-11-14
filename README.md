@@ -13,6 +13,7 @@ Está construido sobre la plantilla *Estadística Data* (sistema de diseño «ho
 | **Fuente y perfil** | Origen y huella SHA-256 del CSV, hallazgos de calidad (copias, rutas repetidas, valores imposibles, columnas constantes), distribución de `McCC` y `LOC` en escala log, tabla 2×2 cruda | Conteos con pandas y DuckDB |
 | **Limpieza visual** | Embudo de 7 pasos con filas antes/después, histogramas antes-después con umbrales de atípicos, **las 9 combinaciones de decisiones** (rutas repetidas × atípicos) con su efecto en la tabla 2×2 y en Welch, guardado del conjunto limpio | Cada regla: filas quitadas por **pandas** (la ejecuta) y por una consulta **DuckDB** aparte; si difieren, no se guarda |
 | **Cuaderno en vivo** | Estilo Colab: 14 celdas (cargar, 6 reglas, tabla 2×2, guardar, Welch, sensibilidad, χ², dos proporciones, Bayes) que se ejecutan una a una o todas desde cero. Cada celda muestra **el código real que ejecuta**, su salida, el contador `[n]`, el tiempo real y ejemplos de las filas que quitó. Reejecutar una celda deja desactualizadas las siguientes | Es el mismo código y las mismas verificaciones del panel; sin retardos artificiales |
+| **Informe en vivo** | Un informe completo (datos, limpieza con tablas y gráficas, tabla 2×2, Welch, sensibilidad, χ², proporciones, Bayes, límites, declaración de IA y referencias) que **se recalcula solo** al cambiar las políticas de limpieza, α o la hipótesis alternativa, y se baja como **PDF** (botón «Descargar PDF» → diálogo de impresión → «Guardar como PDF»). Anexos descargables: CSV limpio, manifiesto y resultados en JSON | El texto sale de las cifras en pantalla (pruebas unitarias); la inferencia en vivo es la misma de Ada y coincide con la del conjunto guardado (prueba) |
 | **Inferencia** | Welch (con hipótesis, fórmula con las cifras, IC, g de Hedges, supuestos), sensibilidad (Welch sobre log, Mann-Whitney), χ² de independencia, dos proporciones, Bayes con conteos reales, límites de las conclusiones | Ada: scipy ↔ statsmodels ↔ fórmula manual (Welch), scipy ↔ fórmula (χ², z), fracciones exactas ↔ conteo directo (Bayes) |
 
 ### Reglas de limpieza (bitácora, Paso 4)
@@ -44,8 +45,8 @@ Desarrollo con recarga: `uvicorn app.main:app --reload --app-dir backend` y, en 
 ### Pruebas
 
 ```powershell
-cd backend;  ..\..\Ada\.venv\Scripts\python.exe -m pytest -q     # 27 pruebas (incluye el cuaderno)
-cd frontend; npm test                                              # 29 pruebas (contraste de colores y formato de cifras)
+cd backend;  ..\..\Ada\.venv\Scripts\python.exe -m pytest -q     # 29 pruebas (incluye cuaderno e inferencia en vivo)
+cd frontend; npm test                                              # 38 pruebas (contraste de colores, formato de cifras y texto del informe)
 ```
 
 Las pruebas de backend usan 10 filas inventadas con trampas conocidas (copia exacta, ruta repetida, `LOC < LLOC`, atípico) y una tabla 2×2 de 100 archivos, **con todos los resultados calculados a mano** (χ² = 50/3, z = √(50/3), P(D|C) = 0,6, Welch recalculado con la fórmula de Welch–Satterthwaite).

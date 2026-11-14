@@ -77,9 +77,9 @@ export function LogHistogram({ edges, series, marks = [], normalize = false, xLa
 
   return (
     <div ref={wrap} className="relative w-full min-w-0 select-none">
-      <svg width={w} height={height} role="img" aria-label={ariaLabel}
+      <svg width={w} height={height} viewBox={`0 0 ${w} ${height}`} role="img" aria-label={ariaLabel}
         onPointerMove={(e) => setHover(binAt(e.clientX, e.currentTarget.getBoundingClientRect().left))}
-        onPointerLeave={() => setHover(null)} style={{ touchAction: 'pan-y' }}>
+        onPointerLeave={() => setHover(null)} style={{ touchAction: 'pan-y', maxWidth: '100%', height: 'auto' }}>
         <rect x={M.left} y={M.top} width={iw} height={ih} fill="var(--paper)" />
         {xt.map((v) => <line key={`gx${v}`} x1={sx(v)} x2={sx(v)} y1={M.top} y2={M.top + ih} stroke="var(--grid)" />)}
         {yt.map((v) => (

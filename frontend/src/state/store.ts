@@ -28,6 +28,7 @@ export const sameRules = (a: Rules, b: Rules) => JSON.stringify(a) === JSON.stri
 
 let timer: ReturnType<typeof setTimeout> | undefined
 let seq = 0
+let liveSeq = 0
 let initPromise: Promise<void> | null = null
 let hashBound = false
 
@@ -58,6 +59,10 @@ interface State {
   inferenceBusy: boolean
   inferenceError: string | null
 
+  live: InferenceResult | null
+  liveBusy: boolean
+  liveError: string | null
+
   nbCells: NbCell[] | null
   nbResults: Record<string, NbResult>
   nbStale: string[]
@@ -74,6 +79,7 @@ interface State {
   setAlpha: (a: number) => void
   setAlternative: (a: Alternative) => void
   runInference: () => Promise<void>
+  refreshLive: () => Promise<void>
   loadNotebook: () => Promise<void>
   runCell: (id: string) => Promise<boolean>
   runAllCells: () => Promise<void>
@@ -99,6 +105,7 @@ export const useStore = create<State>((set, get) => {
     rules: FALLBACK_RULES, preview: null, previewBusy: false, previewError: null,
     applied: null, applying: false, applyError: null,
     alpha: 0.05, alternative: 'two-sided', inference: null, inferenceBusy: false, inferenceError: null,
+    live: null, liveBusy: false, liveError: null,
     nbCells: null, nbResults: {}, nbStale: [], nbRunning: null, nbRunAll: false, nbError: null, nbRulesKey: null,
 
     setTheme: (theme) => {
@@ -177,6 +184,19 @@ export const useStore = create<State>((set, get) => {
         set({ inference, inferenceBusy: false })
       } catch (e) {
         set({ inferenceBusy: false, inferenceError: (e as Error).message })
+      }
+    },
+
+    // Inferencia sobre las reglas de la pantalla (sin guardar): alimenta el informe en vivo. La última petición gana.
+    refreshLive: async () => {
+      const id = ++liveSeq
+      const { rules, alpha, alternative } = get()
+      set({ liveBusy: true })
+      try {
+        const live = await api.inferenceLive(rules, alpha, alternative)
+        if (id === liveSeq) set({ live, liveBusy: false, liveError: null })
+      } catch (e) {
+        if (id === liveSeq) set({ liveBusy: false, liveError: (e as Error).message })
       }
     },
 
