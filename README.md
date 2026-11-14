@@ -27,6 +27,16 @@ Está construido sobre la plantilla *Estadística Data* (sistema de diseño «ho
 
 Con las opciones por defecto: 43 744 → 43 744 → 43 740 → **32 509** filas (= número de rutas distintas).
 
+## Datos
+
+Este repositorio incluye **solo el archivo que usa el panel**: `data/raw/Unified-file.csv` (nivel archivo, 43 744 filas, 7 MB), tomado sin modificar del
+[Unified Bug Dataset v1.2](https://doi.org/10.5281/zenodo.3693686) (Ferenc et al., 2020; licencia CC BY 4.0). Su origen, cita y huella SHA-256 están en
+[`data/raw/SOURCE.md`](data/raw/SOURCE.md) y una prueba automática comprueba que el archivo no cambió. El ZIP completo (1 GB, con datos a nivel de clase y de origen) no se incluye:
+si lo necesitas, bájalo de Zenodo.
+
+**Para usarlo no hay que configurar nada:** clonas, ejecutas `.\scripts\run.ps1` y el panel lee ese CSV. Para analizar otro archivo con las mismas 11 columnas, crea un `.env` en la raíz con
+`CODEPREDICT_DATASET=C:\ruta\al\otro.csv`.
+
 ## Requisitos y ejecución
 
 Este panel usa **Ada como motor**, así que en este equipo corre con el entorno de Ada (ya trae FastAPI, pandas, DuckDB, scipy y statsmodels).
@@ -36,8 +46,8 @@ Este panel usa **Ada como motor**, así que en este equipo corre con el entorno 
 ```
 
 - Ada se busca en `..\Ada` (o en la variable `ADA_ROOT`). Tarda en cargar la primera vez (~20 s); el panel lo indica.
-- El CSV de entrada se toma de la carpeta de Ada (`data/work/unified_bug_dataset/extract/…/Unified-file.csv`) o de `CODEPREDICT_DATASET`.
-- El conjunto limpio y su `manifest.json` se guardan en `<ADA_ROOT>/data/work/codepredict/` (o `CODEPREDICT_WORK`). **Nunca se escribe en `data/raw/` ni se modifica el CSV original** (hay pruebas que lo verifican con huellas SHA-256).
+- El CSV de entrada es `data/raw/Unified-file.csv` (incluido en este repositorio, ver «Datos»); se puede cambiar con `CODEPREDICT_DATASET`.
+- El conjunto limpio y su `manifest.json` se guardan en `data/work/codepredict/` de este repositorio (ignorado por git) o, si Ada está presente, en la carpeta de trabajo de Ada; también se puede cambiar con `CODEPREDICT_WORK`. **Nunca se escribe en `data/raw/` ni se modifica el CSV original** (hay pruebas que lo verifican con huellas SHA-256).
 - Sin Ada, la fuente y la limpieza funcionan; la inferencia avisa que Ada no está disponible (no hay cálculo de respaldo que simule su resultado).
 
 Desarrollo con recarga: `uvicorn app.main:app --reload --app-dir backend` y, en `frontend/`, `npm run dev` (puerto 5173, con proxy a la API).
@@ -45,7 +55,7 @@ Desarrollo con recarga: `uvicorn app.main:app --reload --app-dir backend` y, en 
 ### Pruebas
 
 ```powershell
-cd backend;  ..\..\Ada\.venv\Scripts\python.exe -m pytest -q     # 29 pruebas (incluye cuaderno e inferencia en vivo)
+cd backend;  ..\..\Ada\.venv\Scripts\python.exe -m pytest -q     # 34 pruebas (incluye cuaderno, inferencia en vivo y el CSV real)
 cd frontend; npm test                                              # 38 pruebas (contraste de colores, formato de cifras y texto del informe)
 ```
 

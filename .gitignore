@@ -13,3 +13,6 @@ Thumbs.db
 .idea/
 backend/.venv/
 frontend/node_modules/
+
+# Resultados de la limpieza (se regeneran con el panel)
+data/work/

@@ -1,0 +1,2 @@
+# Los datos originales se guardan byte a byte (sin convertir saltos de línea): su huella SHA-256 debe coincidir con data/raw/SOURCE.md
+*.csv -text

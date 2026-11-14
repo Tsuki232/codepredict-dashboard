@@ -1,8 +1,9 @@
 """Rutas y ajustes del proyecto. Todo se puede cambiar con variables de entorno (o con un archivo .env en la raíz).
 
     ADA_ROOT            carpeta del repositorio de Ada (motor estadístico verificado). Por defecto, ../Ada junto a este proyecto.
-    CODEPREDICT_DATASET CSV de entrada (Unified-file.csv). Por defecto, el que dejó el perfilado de la bitácora dentro de Ada.
-    CODEPREDICT_WORK    carpeta de salida. Por defecto, <ADA_ROOT>/data/work/codepredict (nunca data/raw).
+    CODEPREDICT_DATASET CSV de entrada. Por defecto, data/raw/Unified-file.csv de este repositorio (si falta, el extraído dentro de Ada).
+    CODEPREDICT_WORK    carpeta de salida. Por defecto, <ADA_ROOT>/data/work/codepredict si Ada está presente y, si no,
+                        data/work/codepredict dentro de este repositorio (nunca data/raw).
 """
 from __future__ import annotations
 
@@ -18,20 +19,28 @@ def ada_root() -> Path:
     env = os.getenv("ADA_ROOT")
     if env:
         return Path(env).expanduser().resolve()
-    for cand in (ROOT.parent / "Ada", Path(r"G:\programas\Ada")):
-        if (cand / "src" / "ada").is_dir():
-            return cand.resolve()
-    return (ROOT.parent / "Ada").resolve()
+    cand = ROOT.parent / "Ada"
+    return cand.resolve()
+
+
+def ada_present() -> bool:
+    return (ada_root() / "src" / "ada").is_dir()
 
 
 def dataset_path() -> Path:
     env = os.getenv("CODEPREDICT_DATASET")
-    return Path(env).expanduser().resolve() if env else (ada_root() / _UNIFIED).resolve()
+    if env:
+        return Path(env).expanduser().resolve()
+    own = ROOT / "data" / "raw" / "Unified-file.csv"  # copia incluida en el repositorio (CC BY 4.0, ver data/raw/SOURCE.md)
+    return own.resolve() if own.is_file() else (ada_root() / _UNIFIED).resolve()
 
 
 def work_dir() -> Path:
     env = os.getenv("CODEPREDICT_WORK")
-    return Path(env).expanduser().resolve() if env else (ada_root() / "data" / "work" / "codepredict").resolve()
+    if env:
+        return Path(env).expanduser().resolve()
+    base = ada_root() if ada_present() else ROOT
+    return (base / "data" / "work" / "codepredict").resolve()
 
 
 class UnsafeWritePath(Exception):
