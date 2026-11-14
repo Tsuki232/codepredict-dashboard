@@ -27,6 +27,10 @@ Está construido sobre la plantilla *Estadística Data* (sistema de diseño «ho
 
 Con las opciones por defecto: 43 744 → 43 744 → 43 740 → **32 509** filas (= número de rutas distintas).
 
+## Informe
+
+La carpeta [`informe/`](informe/LEEME.md) tiene la **sección de resultados** lista para pegar en el informe del grupo, en Word y en PDF, con sus figuras y cifras.
+
 ## Datos
 
 Este repositorio incluye **solo el archivo que usa el panel**: `data/raw/Unified-file.csv` (nivel archivo, 43 744 filas, 7 MB), tomado sin modificar del

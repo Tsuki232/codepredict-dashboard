@@ -1,0 +1,160 @@
+<section id="resultados">
+<h1 id="r0" class="newpage">Resultados</h1>
+<p>Esta sección presenta los resultados del análisis con los datos reales del <em>Unified Bug Dataset</em> a nivel de archivo (Ferenc et al., 2020). Todas las cifras las calcularon programas de Python y se comprobaron por dos vías independientes: pandas y DuckDB en la limpieza, y scipy, statsmodels y la fórmula escrita a mano en las pruebas estadísticas. Además, para este informe se recalcularon a mano las cifras principales con las fórmulas (ver la última parte de la sección). Dos decisiones de limpieza son <strong>provisionales</strong> hasta que el grupo las confirme: qué hacer con las rutas repetidas y qué hacer con los atípicos. Más abajo se explica cada una y se muestra qué pasa con las otras opciones.</p>
+
+<h2 id="r1">Limpieza de los datos</h2>
+<p>Se partió de [[R.meta.n_bruto:n]] filas. La Tabla 1 muestra cada regla con el número de filas antes y después. No se encontraron datos faltantes ni valores imposibles. Se quitaron [[R.steps.2.removed:n]] filas idénticas y [[R.steps.3.removed:n]] filas que repetían la ruta de un archivo ya presente, dejando la primera aparición de cada uno. Así, cada fila representa un archivo distinto y quedaron [[R.meta.n_final:n]] archivos, que es el número de rutas distintas del conjunto. La columna CLOC se descartó porque vale cero en todas las filas.</p>
+
+<div class="tab" id="tab-1">
+<p class="cap-num">Tabla 1</p>
+<p class="cap-title">Pasos de la limpieza con las reglas elegidas</p>
+<table class="num">
+<thead><tr><th>Paso</th><th>Filas antes</th><th>Filas después</th><th>Filas quitadas</th></tr></thead>
+<tbody>
+<tr><td>Filas leídas del archivo</td><td>[[R.steps.0.before:n]]</td><td>[[R.steps.0.after:n]]</td><td>[[R.steps.0.removed:n]]</td></tr>
+<tr><td>Integridad (faltantes, negativos, LOC &lt; LLOC)</td><td>[[R.steps.1.before:n]]</td><td>[[R.steps.1.after:n]]</td><td>[[R.steps.1.removed:n]]</td></tr>
+<tr><td>Filas idénticas</td><td>[[R.steps.2.before:n]]</td><td>[[R.steps.2.after:n]]</td><td>[[R.steps.2.removed:n]]</td></tr>
+<tr><td>Rutas repetidas (se deja la primera)</td><td>[[R.steps.3.before:n]]</td><td>[[R.steps.3.after:n]]</td><td>[[R.steps.3.removed:n]]</td></tr>
+<tr><td>Columnas constantes (CLOC)</td><td>[[R.steps.4.before:n]]</td><td>[[R.steps.4.after:n]]</td><td>[[R.steps.4.removed:n]]</td></tr>
+<tr><td>Atípicos extremos (se conservan)</td><td>[[R.steps.5.before:n]]</td><td>[[R.steps.5.after:n]]</td><td>[[R.steps.5.removed:n]]</td></tr>
+</tbody>
+</table>
+<p class="nota"><em>Nota.</em> Elaboración propia. En cada paso, el número de filas quitadas coincide entre pandas y DuckDB. El último paso (crear las etiquetas «con errores» y «complejidad alta») no cambia el número de filas.</p>
+</div>
+
+<p>Los atípicos extremos se señalaron, pero por ahora no se quitan. Con la regla de Tukey (más de tres veces el rango intercuartílico por encima del tercer cuartil), que equivale a una complejidad McCC mayor que [[R.fences.McCC.tukey3_upper:0]] o a más de [[R.fences.LOC.tukey3_upper:0]] líneas, habrían quedado fuera [[R.atip_tukey:n]] archivos; con el percentil 99.9, [[R.atip_p999:n]]. Se conservan porque los archivos más complejos son justamente los que interesa estudiar, y quitarlos podría esconder el efecto que se busca. La Figura 1 muestra la distribución de la complejidad antes y después de limpiar.</p>
+
+<div class="fig" id="fig-1">
+<p class="cap-num">Figura 1</p>
+<p class="cap-title">Complejidad ciclomática de los archivos antes y después de limpiar</p>
+<img src="figuras/res_mcc_antes_despues.png" alt="Histograma de la complejidad ciclomática en escala logarítmica antes y después de limpiar" style="width:5.6in">
+<p class="nota"><em>Nota.</em> Elaboración propia. El eje horizontal es logarítmico: la mayoría de los archivos tiene complejidad baja y unos pocos tienen valores muy altos. La línea punteada marca el umbral fijado antes de abrir los datos (McCC &gt; 10).</p>
+</div>
+
+<p>Para saber si las dos decisiones provisionales cambian la respuesta, se repitió el cálculo con las nueve combinaciones posibles (Tabla 2). La diferencia entre el porcentaje de archivos con errores en los de complejidad alta y en los demás va de [[R.impact_pp_min:1]] a [[R.impact_pp_max:1]] puntos porcentuales y es positiva en las nueve. Es decir, las decisiones cambian cuánto es la diferencia, pero no su dirección.</p>
+
+<div class="tab" id="tab-2">
+<p class="cap-num">Tabla 2</p>
+<p class="cap-title">Efecto de las decisiones de limpieza sobre la diferencia entre grupos</p>
+<table class="num">
+<thead><tr><th>Rutas repetidas · atípicos</th><th>Archivos</th><th>Con errores si complejidad alta (%)</th><th>Con errores si no es alta (%)</th><th>Diferencia (pp)</th></tr></thead>
+<tbody>
+[[impact_rows]]
+</tbody>
+</table>
+<p class="nota"><em>Nota.</em> Elaboración propia. pp = puntos porcentuales. En negrita, la combinación usada en el resto de la sección.</p>
+</div>
+
+<h2 id="r2">Descripción de los grupos</h2>
+<p>Se llamó «con errores» a un archivo con al menos un error registrado (<em>bug</em> &gt; 0) y «complejidad alta» a uno con McCC mayor que 10, valor de referencia de McCabe (1976) que se fijó antes de abrir los datos. De los [[R.meta.n_final:n]] archivos, [[R.grupos.defectuosos.n:n]] tienen errores y [[R.grupos.sin_defecto.n:n]] no. La Tabla 3 compara su complejidad. Los archivos con errores tienen una mediana de [[R.grupos.defectuosos.median:0]] frente a [[R.grupos.sin_defecto.median:0]] en los demás.</p>
+
+<div class="tab" id="tab-3">
+<p class="cap-num">Tabla 3</p>
+<p class="cap-title">Complejidad ciclomática (McCC) según la presencia de errores</p>
+<table class="num">
+<thead><tr><th>Grupo</th><th><em>n</em></th><th><em>M</em></th><th><em>DE</em></th><th>Mediana</th><th>Q1</th><th>Q3</th><th>Máximo</th></tr></thead>
+<tbody>
+<tr><td>Con errores</td><td>[[R.grupos.defectuosos.n:n]]</td><td>[[R.grupos.defectuosos.mean:2]]</td><td>[[R.grupos.defectuosos.sd:2]]</td><td>[[R.grupos.defectuosos.median:0]]</td><td>[[R.grupos.defectuosos.q1:0]]</td><td>[[R.grupos.defectuosos.q3:0]]</td><td>[[R.grupos.defectuosos.max:n]]</td></tr>
+<tr><td>Sin errores</td><td>[[R.grupos.sin_defecto.n:n]]</td><td>[[R.grupos.sin_defecto.mean:2]]</td><td>[[R.grupos.sin_defecto.sd:2]]</td><td>[[R.grupos.sin_defecto.median:0]]</td><td>[[R.grupos.sin_defecto.q1:0]]</td><td>[[R.grupos.sin_defecto.q3:0]]</td><td>[[R.grupos.sin_defecto.max:n]]</td></tr>
+</tbody>
+</table>
+<p class="nota"><em>Nota.</em> Elaboración propia. <em>M</em> = media, <em>DE</em> = desviación estándar, Q1 y Q3 = primer y tercer cuartil.</p>
+</div>
+
+<p>Las distribuciones son muy asimétricas (asimetría de [[R.welch.skew_x:1]] en los archivos con errores y de [[R.welch.skew_y:1]] en los demás): unos pocos archivos muy complejos elevan las medias. Por eso, además de comparar medias, más adelante se usan pruebas que no dependen de la normalidad. La Figura 2 muestra la forma de las dos distribuciones.</p>
+
+<div class="fig" id="fig-2">
+<p class="cap-num">Figura 2</p>
+<p class="cap-title">Complejidad ciclomática en archivos con y sin errores</p>
+<img src="figuras/res_mcc_grupos.png" alt="Histogramas superpuestos de la complejidad de los archivos con y sin errores" style="width:5.6in">
+<p class="nota"><em>Nota.</em> Elaboración propia. Cada grupo se muestra como proporción de sus propios archivos, porque el grupo sin errores es mucho más grande. Eje horizontal logarítmico.</p>
+</div>
+
+<h2 id="r3">Tabla de contingencia y probabilidades</h2>
+<p>Sea <em>C</em> el suceso «complejidad alta» (McCC &gt; 10) y <em>D</em> el suceso «tiene al menos un error». La Tabla 4 cruza los dos. Entre los [[R.tot.C:n]] archivos de complejidad alta, [[R.tabla.C_D:n]] ([[R.prob.pct_c_d:1]] %) tienen errores; entre los [[R.tot.NC:n]] restantes, [[R.tabla.NC_D:n]] ([[R.prob.pct_nc_d:1]] %). La diferencia es de [[R.prob.pp:1]] puntos porcentuales y la razón de riesgos es [[R.prob.risk_ratio:2]]: un archivo de complejidad alta tiene unas [[R.prob.risk_ratio:1]] veces la probabilidad de tener errores de uno de complejidad no alta. En el conjunto completo, <em>P</em>(<em>D</em>) = [[R.prob.pct_d:1]] % y <em>P</em>(<em>C</em>) = [[R.prob.pct_c:1]] %; además, <em>P</em>(<em>C</em> | <em>D</em>) = [[R.prob.pct_c_given_d:1]] %, es decir, algo más de la mitad de los archivos con errores son de complejidad alta.</p>
+
+<div class="tab" id="tab-4">
+<p class="cap-num">Tabla 4</p>
+<p class="cap-title">Archivos según complejidad y presencia de errores</p>
+<table class="num">
+<thead><tr><th>Complejidad</th><th>Con errores</th><th>Sin errores</th><th>Total</th><th>% con errores</th></tr></thead>
+<tbody>
+<tr><td>Alta (McCC &gt; 10)</td><td>[[R.tabla.C_D:n]]</td><td>[[R.tabla.C_ND:n]]</td><td>[[R.tot.C:n]]</td><td>[[R.prob.pct_c_d:1]]</td></tr>
+<tr><td>No alta (McCC ≤ 10)</td><td>[[R.tabla.NC_D:n]]</td><td>[[R.tabla.NC_ND:n]]</td><td>[[R.tot.NC:n]]</td><td>[[R.prob.pct_nc_d:1]]</td></tr>
+<tr class="tot"><td>Total</td><td>[[R.tot.D:n]]</td><td>[[R.tot.N:n]]</td><td>[[R.tot.n:n]]</td><td>[[R.prob.pct_d:1]]</td></tr>
+</tbody>
+</table>
+<p class="nota"><em>Nota.</em> Elaboración propia con los archivos que quedan tras la limpieza.</p>
+</div>
+
+<div class="fig" id="fig-3">
+<p class="cap-num">Figura 3</p>
+<p class="cap-title">Probabilidad de tener errores según la complejidad del archivo</p>
+<img src="figuras/res_probabilidades.png" alt="Barras con la probabilidad de error en general y según complejidad alta o no alta" style="width:5.2in">
+<p class="nota"><em>Nota.</em> Elaboración propia a partir de la Tabla 4.</p>
+</div>
+
+<h2 id="r4">Comparación de medias de la complejidad (t de Welch)</h2>
+<p>Para comparar la complejidad media de los archivos con errores (grupo 1) y sin errores (grupo 2) se planteó <em>H</em><sub>0</sub>: μ<sub>1</sub> = μ<sub>2</sub> frente a <em>H</em><sub>1</sub>: μ<sub>1</sub> ≠ μ<sub>2</sub>, con un nivel de significancia α = .05 (decisión provisional del grupo). Se usó la prueba t de Welch, que no exige varianzas iguales: la prueba de Levene indica que las varianzas de los dos grupos difieren (<em>p</em> &lt; .001). El estadístico es</p>
+$$ t = \frac{\bar{x}_1 - \bar{x}_2}{\sqrt{\dfrac{s_1^2}{n_1} + \dfrac{s_2^2}{n_2}}} = \frac{[[R.grupos.defectuosos.mean:2]] - [[R.grupos.sin_defecto.mean:2]]}{\sqrt{\dfrac{[[R.grupos.defectuosos.sd:2]]^2}{[[R.grupos.defectuosos.n:i]]} + \dfrac{[[R.grupos.sin_defecto.sd:2]]^2}{[[R.grupos.sin_defecto.n:i]]}}} = [[R.welch.t:2]] \tag{@welch} $$
+<p>Resultado: <em>t</em>([[R.welch.df:1]]) = [[R.welch.t:2]], <em>p</em> [[R.welch.p:peq]]. La diferencia de medias es [[R.welch.dif:2]], con un intervalo de confianza del [[R.welch.nivel:0]] % de [[R.welch.lo:2]] a [[R.welch.hi:2]]. El tamaño del efecto es <em>g</em> de Hedges = [[R.welch.g:2]], que se considera <strong>[[R.welch.g_txt:s]]</strong>. Se rechaza <em>H</em><sub>0</sub>: en estos datos, los archivos con errores tienen una complejidad media mayor.</p>
+<p>Como la complejidad no es normal, se repitió la comparación de dos maneras más (Tabla 5): la prueba de Welch sobre el logaritmo de (1 + McCC), que reduce el efecto de los valores extremos, y la prueba U de Mann–Whitney, que compara rangos y no medias. Las tres pruebas rechazan <em>H</em><sub>0</sub>. La probabilidad de superioridad es [[R.robusta.ps:3]] (intervalo de confianza del 95 % de [[R.robusta.lo:3]] a [[R.robusta.hi:3]]): si se elige al azar un archivo con errores y uno sin errores, el primero resulta más complejo el [[R.robusta.ps_pct:1]] % de las veces (un valor de 0.5 significaría que no hay diferencia). Con más de 32 mil archivos, incluso diferencias pequeñas resultan significativas; por eso importa mirar el tamaño del efecto y no solo el valor <em>p</em>. La Figura 4 resume los tamaños de efecto con sus intervalos.</p>
+
+<div class="tab" id="tab-5">
+<p class="cap-num">Tabla 5</p>
+<p class="cap-title">Tres formas de comparar la complejidad de los archivos con y sin errores</p>
+<table class="l2">
+<thead><tr><th>Prueba</th><th>Estadístico</th><th><em>p</em></th><th>Tamaño del efecto</th></tr></thead>
+<tbody>
+<tr><td>t de Welch sobre McCC</td><td><em>t</em>([[R.welch.df:1]]) = [[R.welch.t:2]]</td><td>[[R.welch.p:p]]</td><td><em>g</em> = [[R.welch.g:2]]</td></tr>
+<tr><td>t de Welch sobre log(1 + McCC)</td><td><em>t</em>([[R.welch_log.df:1]]) = [[R.welch_log.t:2]]</td><td>[[R.welch_log.p:p]]</td><td><em>g</em> = [[R.welch_log.g:2]]</td></tr>
+<tr><td>U de Mann–Whitney</td><td><em>U</em> = [[R.robusta.u:n]]</td><td>[[R.robusta.p:p]]</td><td>P(X &gt; Y) = [[R.robusta.ps:3]]</td></tr>
+</tbody>
+</table>
+<p class="nota"><em>Nota.</em> Elaboración propia. En las tres, <em>p</em> &lt; .001 significa un valor menor que .001. P(X &gt; Y) es la probabilidad de superioridad.</p>
+</div>
+
+<div class="fig" id="fig-4">
+<p class="cap-num">Figura 4</p>
+<p class="cap-title">Tamaños de efecto con sus intervalos de confianza</p>
+<img src="figuras/res_efectos.png" alt="Tres intervalos de confianza: diferencia de medias, probabilidad de superioridad y diferencia de proporciones" style="width:5.4in">
+<p class="nota"><em>Nota.</em> Elaboración propia. La línea punteada marca el valor que tendría la medida si no hubiera diferencia entre los grupos. Ningún intervalo la incluye.</p>
+</div>
+
+<h2 id="r5">Independencia entre complejidad y errores</h2>
+<p>Con la Tabla 4 se contrastó <em>H</em><sub>0</sub>: la complejidad alta y tener errores son independientes, con la prueba χ² de independencia:</p>
+$$ \chi^2 = \sum \frac{(O - E)^2}{E} = [[R.chi.x2:2]], \qquad gl = [[R.chi.gl:i]] \tag{@chi} $$
+<p>Resultado: χ²([[R.chi.gl:i]]) = [[R.chi.x2:2]], <em>p</em> [[R.chi.p:peq]], <em>V</em> de Cramér = [[R.chi.v:2]], un efecto <strong>pequeño</strong>. Se rechaza <em>H</em><sub>0</sub>. Se cumple el supuesto de la prueba: la frecuencia esperada más baja es [[R.chi.min_esp:1]], muy por encima de 5 (Tabla 6).</p>
+
+<div class="tab" id="tab-6">
+<p class="cap-num">Tabla 6</p>
+<p class="cap-title">Frecuencias observadas y esperadas si la complejidad y los errores fueran independientes</p>
+<table class="num">
+<thead><tr><th>Complejidad</th><th>Con errores (observado)</th><th>Con errores (esperado)</th><th>Sin errores (observado)</th><th>Sin errores (esperado)</th></tr></thead>
+<tbody>
+<tr><td>Alta (McCC &gt; 10)</td><td>[[R.tabla.C_D:n]]</td><td>[[R.esperados.C_D:1]]</td><td>[[R.tabla.C_ND:n]]</td><td>[[R.esperados.C_ND:1]]</td></tr>
+<tr><td>No alta (McCC ≤ 10)</td><td>[[R.tabla.NC_D:n]]</td><td>[[R.esperados.NC_D:1]]</td><td>[[R.tabla.NC_ND:n]]</td><td>[[R.esperados.NC_ND:1]]</td></tr>
+</tbody>
+</table>
+<p class="nota"><em>Nota.</em> Elaboración propia. Esperado = (total de la fila × total de la columna) / total general.</p>
+</div>
+
+<h2 id="r6">Comparación de dos proporciones</h2>
+<p>También se compararon directamente las dos proporciones de archivos con errores, [[R.prob.pct_c_d:1]] % en los de complejidad alta y [[R.prob.pct_nc_d:1]] % en los demás, con la prueba z de dos proporciones: <em>z</em> = [[R.z.z:2]], <em>p</em> [[R.z.p:peq]]. La diferencia es [[R.z.dif:3]] ([[R.z.dif_pp:1]] puntos porcentuales), con un intervalo de confianza del 95 % de [[R.z.lo:3]] a [[R.z.hi:3]]. La razón de momios es [[R.z.or:2]] y el tamaño del efecto <em>h</em> de Cohen es [[R.z.h:2]]. Esta prueba y la χ² son equivalentes en una tabla de 2 × 2 (el cuadrado de <em>z</em> coincide con el valor de χ²), por lo que llevan a la misma decisión: se rechaza la igualdad de proporciones.</p>
+
+<h2 id="r7">Probabilidad de error dado que la complejidad es alta (Bayes)</h2>
+<p>Con los conteos de la Tabla 4 se calculó, con el teorema de Bayes, la probabilidad de que un archivo tenga errores sabiendo que su complejidad es alta:</p>
+$$ P(D \mid C) = \frac{P(C \mid D)\,P(D)}{P(C)} = \frac{[[R.bayes.c_d:4]] \cdot [[R.bayes.prior:4]]}{[[R.bayes.c:4]]} = [[R.bayes.post:4]] \tag{@bayes} $$
+<p>La probabilidad de tener errores pasa de [[R.bayes.pct_prior:1]] % para un archivo cualquiera a [[R.bayes.pct_post:1]] % para uno de complejidad alta, lo que coincide con el conteo directo, [[R.bayes.dc:n]] de [[R.bayes.cc:n]] archivos de complejidad alta ([[R.bayes.frac:s]]). Es una estimación de esta muestra de archivos Java, no una probabilidad válida para cualquier proyecto.</p>
+
+<h2 id="r8">Cómo se verificaron los cálculos</h2>
+<p>Cada número se calculó por dos vías independientes, y las cifras principales se recalcularon además a mano con las fórmulas. Por ejemplo, el estadístico de Welch dio <em>t</em> = [[R.welch.t:4]] con scipy y statsmodels, y [[R.welch.t_mano:4]] con la fórmula escrita a mano, con [[R.welch.df_mano:1]] grados de libertad de Welch–Satterthwaite; el χ² dio [[R.chi.x2:2]] con scipy y [[R.chi.x2_mano:2]] a mano. Los conteos de la limpieza coinciden entre pandas y DuckDB en todos los pasos. Todo se puede reproducir a partir del archivo de datos original, cuya huella SHA-256 (<code>[[R.meta.csv_sha256:s]]</code>) se conserva en el repositorio del proyecto.</p>
+</section>
+
+<section class="refs" id="refs-res">
+<h1 id="r9" class="notoc newpage">Referencias</h1>
+<p>Delacre, M., Lakens, D., &amp; Leys, C. (2017). Why psychologists should by default use Welch's <em>t</em>-test instead of Student's <em>t</em>-test. <em>International Review of Social Psychology, 30</em>(1), 92–101. https://doi.org/10.5334/irsp.82</p>
+<p>Ferenc, R., Tóth, Z., Ladányi, G., Siket, I., &amp; Gyimóthy, T. (2020). <em>Unified Bug Dataset</em> (v1.2) [Conjunto de datos]. Zenodo. https://doi.org/10.5281/zenodo.3693686</p>
+<p>McCabe, T. J. (1976). A complexity measure. <em>IEEE Transactions on Software Engineering, SE-2</em>(4), 308–320. https://doi.org/10.1109/TSE.1976.233837</p>
+<p>Welch, B. L. (1947). The generalization of «Student's» problem when several different population variances are involved. <em>Biometrika, 34</em>(1–2), 28–35. https://doi.org/10.1093/biomet/34.1-2.28</p>
+</section>
