@@ -31,6 +31,8 @@ Con las opciones por defecto: 43 744 → 43 744 → 43 740 → **32 509** filas 
 
 La carpeta [`informe/`](informe/LEEME.md) tiene la **sección de resultados** lista para pegar en el informe del grupo, en Word y en PDF, con sus figuras y cifras.
 
+**Qué falta para completar el informe:** ver [`informe/PENDIENTE.txt`](informe/PENDIENTE.txt) (decisiones del grupo, discusión y conclusiones, el modelo predictivo que aún no existe, armado final y referencias por verificar).
+
 ## Datos
 
 Este repositorio incluye **solo el archivo que usa el panel**: `data/raw/Unified-file.csv` (nivel archivo, 43 744 filas, 7 MB), tomado sin modificar del

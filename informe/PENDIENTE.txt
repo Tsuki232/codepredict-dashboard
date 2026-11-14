@@ -1,0 +1,73 @@
+QUE FALTA PARA COMPLETAR EL INFORME
+====================================
+Proyecto CodePredict AI - Estadistica Inferencial y Ciencia de Datos
+(Marque [x] a medida que se vaya haciendo. Fecha de esta lista: 14 de noviembre de 2026.)
+
+LO QUE YA ESTA HECHO (por el panel y sus scripts)
+-------------------------------------------------
+[x] Limpieza de los datos con conteos y doble verificacion (43 744 -> 32 509 archivos).
+[x] Calculos: t de Welch (y su sensibilidad), chi-cuadrado, dos proporciones y Bayes.
+[x] Seccion "Resultados" en Word y PDF, con tablas, figuras y ecuaciones (carpeta informe/).
+[x] Datos incluidos en el repositorio con su fuente, cita y huella (data/raw/SOURCE.md).
+
+1. DECISIONES DEL GRUPO (la seccion de resultados las marca como PROVISIONALES)
+--------------------------------------------------------------------------------
+[ ] Rutas repetidas: hoy se deja la primera aparicion de cada archivo.
+    Otras opciones: quitar todas las filas de esas rutas, o conservarlas todas.
+    Elegir una y escribir por que (la Tabla 2 del informe muestra que cambia cuanto es la
+    diferencia, pero no su direccion).
+[ ] Atipicos extremos: hoy se conservan (solo se senalan). Otras opciones: quitar los que pasan
+    de Q3 + 3*RIC o del percentil 99.9. Elegir una y justificarla.
+[ ] Nivel de significancia (hoy alfa = .05) e hipotesis alternativa de Welch
+    (hoy dos colas: las medias son distintas). Si el grupo prefiere "los archivos con errores
+    tienen MAYOR complejidad" (una cola), decidirlo por la teoria, no por el resultado.
+[ ] Confirmar los umbrales ya fijados: complejidad alta = McCC > 10 (McCabe, 1976);
+    con errores = bug > 0.
+    Para cambiar cualquiera de estas decisiones: abrir el panel (scripts/run.ps1), elegir la
+    opcion en "Informe en vivo" y volver a generar el Word/PDF (ver informe/LEEME.md).
+
+2. TEXTO QUE FALTA ESCRIBIR (esto es del grupo, no del panel)
+--------------------------------------------------------------
+[ ] Introduccion y planteamiento: pregunta de investigacion y las hipotesis H0/H1 con su contexto.
+[ ] Discusion: interpretar los resultados con palabras propias. Puntos a tratar:
+      - es una asociacion, no una causa;
+      - el efecto en las medias es pequeno (g = 0.36) aunque la probabilidad de superioridad
+        es 0.71, y con mas de 32 mil archivos casi todo sale "significativo";
+      - un mismo proyecto aporta muchos archivos, asi que los valores p son optimistas.
+[ ] Conclusiones y recomendaciones: que significa para decidir que modulos revisar primero.
+[ ] Limitaciones: solo Java, decisiones provisionales de limpieza, independencia de los datos.
+[ ] Resumen del informe.
+
+3. PASOS DEL PROCESO QUE AUN NO SE HAN HECHO (mapa de la bitacora)
+-------------------------------------------------------------------
+[ ] Etapa 8 - Modelo predictivo: linea base y red neuronal comparadas. NO esta implementada.
+    El titulo del proyecto habla de "redes neuronales": hay que hacerla o ajustar el titulo/alcance.
+[ ] Etapas 5 a 7 (exploracion, experimento/eventos, Bayes y Welch): ya estan CALCULADAS en el
+    panel, pero falta que el grupo las apruebe y las redacte (ver punto 2).
+[ ] Etapa 9 - Informe final con datos reales: falta unir todo (esta seccion + el resto).
+
+4. ARMAR EL DOCUMENTO FINAL
+----------------------------
+[ ] Abrir el Word (informe/CodePredict_AI_Seccion_Resultados.docx) y revisarlo: no se pudo abrir
+    en Word al prepararlo. Las 3 ecuaciones estan como imagen (para editarlas: Insertar > Ecuacion).
+[ ] Pegar la seccion en el informe y volver a numerar tablas y figuras (aqui empiezan en 1).
+[ ] Portada, tabla de contenido, indices de tablas y figuras (el informe de avance ya tiene la portada).
+[ ] Verificar las tres referencias que se escribieron de memoria (Delacre et al., 2017;
+    McCabe, 1976; Welch, 1947) y agregar las que falten (por ejemplo, Shepperd et al., 2013).
+[ ] Formato: la seccion usa punto decimal y espacio para los miles, como los informes anteriores.
+    Si la docente pide coma decimal, hay que cambiarlo.
+[ ] Contrastar todo con la rubrica o guia del curso (no se tuvo a mano al prepararla).
+
+5. REQUISITOS DEL CURSO / HONESTIDAD
+-------------------------------------
+[ ] Que cada integrante pueda explicar el codigo y los calculos (regla del curso).
+[ ] Revisar la declaracion de uso de IA (esta en el README y en la seccion 6 del informe completo)
+    y dejarla como describe lo que realmente se hizo.
+[ ] La parte analitica (interpretacion y conclusiones) la redacta y defiende el grupo.
+
+6. OPCIONAL
+-----------
+[ ] Que el panel corra completo en otros equipos: la inferencia necesita Ada y Ada no esta en
+    ningun repositorio publico. Sin Ada funcionan la limpieza, el cuaderno y el informe de datos.
+[ ] Invitar a los companeros como colaboradores del repositorio si van a editar (hoy es publico
+    y solo lo puede modificar su dueno).
