@@ -20,7 +20,11 @@ Navegador ──► servidor del panel (en cada equipo) ──► túnel de Clou
 ```
 
 - La **clave** se genera la primera vez y queda en `ada_gateway/.env.gateway` (ignorado por git). Compártanla solo por un canal privado.
-- El **túnel rápido** de Cloudflare (`trycloudflare.com`) no usa cuenta ni token, pero **su dirección cambia cada vez que se reinicia**: hay que pasarle la nueva al grupo.
+- **Túnel con nombre (el que está configurado):** en la cuenta de Cloudflare se creó UN túnel nuevo, `ada-gateway`, con UNA ruta publicada, `https://ada.<dominio-del-grupo>` → `http://127.0.0.1:8787`
+  (Cloudflare añadió un único registro DNS CNAME para ese nombre; no se modificó ningún túnel, ruta ni registro existente). La dirección es **fija**, así que los compañeros configuran `ADA_REMOTE_URL` una sola vez.
+  Su token vive en `ada_gateway/.env.gateway` (ignorado por git) como `CLOUDFLARE_TUNNEL_TOKEN`, junto con `ADA_PUBLIC_URL`; el script lo pasa por variable de entorno, nunca por la línea de comandos.
+  **Para quitarlo:** en Cloudflare, Networking › Tunnels › `ada-gateway` › eliminar la ruta y el túnel (y el registro DNS `ada`); y borrar esas dos líneas de `.env.gateway`.
+- **Túnel rápido (alternativa sin cuenta):** si `.env.gateway` no tiene token, el script usa el túnel rápido de Cloudflare (`trycloudflare.com`): no toca ninguna cuenta, pero **su dirección cambia cada vez que se reinicia**.
 - Falta el programa `cloudflared`: el script lo busca en el PATH o como `ada_gateway/cloudflared.exe`. Sin él, la puerta de enlace funciona en local.
 - Una dirección **fija** exige un túnel con nombre y un dominio en una cuenta de Cloudflare. Si se hace, que sea una cuenta **propia del proyecto**, no una cuenta de trabajo con otros túneles.
 

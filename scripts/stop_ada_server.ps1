@@ -1,4 +1,4 @@
-# Apaga el túnel y la puerta de enlace que arrancó start_ada_server.ps1. NO apaga Ollama (lo usa también Ada).
+﻿# Apaga el túnel y la puerta de enlace que arrancó start_ada_server.ps1. NO apaga Ollama (lo usa también Ada).
 # Solo detiene los procesos cuyos PID guardó el script de arranque y que, además, siguen siendo del programa esperado.
 $root = Split-Path -Parent $PSScriptRoot
 $pids = Join-Path $root "ada_gateway\.pids"
