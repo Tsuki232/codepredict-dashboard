@@ -1,6 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from './api'
-import { ADA_DOWN_EVENT, announceAdaDown, engineName, isAdaDownCode } from './engine'
+import { ADA_DOWN_EVENT, adaDownMessage, announceAdaDown, engineName, isAdaDownCode } from './engine'
+
+describe('aviso desde el estado de Ada', () => {
+  it('sin Ada configurada o caída (fase error) sale el aviso, sin el nombre técnico de la excepción', () => {
+    expect(adaDownMessage({ phase: 'error', mode: null, motor: 'ada', error: 'FileNotFoundError: No encuentro Ada en C:\\x. Define ADA_ROOT.' }))
+      .toBe('No encuentro Ada en C:\\x. Define ADA_ROOT.')
+    expect(adaDownMessage({ phase: 'error', error: null })).toBe('Ada no está disponible.')
+  })
+
+  it('no sale si Ada está lista, si solo se está cargando, o si la persona ya eligió Python', () => {
+    expect(adaDownMessage({ phase: 'ready', mode: 'remote', motor: 'ada' })).toBeNull()
+    expect(adaDownMessage({ phase: 'loading' })).toBeNull()
+    expect(adaDownMessage({ phase: 'ready', mode: 'python', motor: 'python' })).toBeNull()
+    expect(adaDownMessage({ phase: 'error', mode: 'python' })).toBeNull()
+    expect(adaDownMessage(null)).toBeNull()
+  })
+})
 
 describe('nombre del motor', () => {
   it('solo dice «Ada» cuando calculó Ada: Python local nunca se rotula como Ada', () => {

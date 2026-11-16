@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { DEFAULT_VIEW, VIEW_IDS, type ViewId } from '../app.config'
 import { api } from '../lib/api'
+import { adaDownMessage, announceAdaDown } from '../lib/engine'
 import type { Health, InferenceResult, Manifest, NbCell, NbResult, Preview, Profile, Rules } from './types'
 
 const viewFromHash = (): ViewId => {
@@ -130,6 +131,8 @@ export const useStore = create<State>((set, get) => {
         try {
           const health = await api.health()
           set({ health, serverError: null })
+          const down = adaDownMessage(health.ada)      // sin Ada configurada o caída: el aviso sale desde el principio, no solo al abrir Inferencia
+          if (down) announceAdaDown(down)
         } catch (e) {
           set({ serverError: (e as Error).message, booting: false })
           return
@@ -150,6 +153,8 @@ export const useStore = create<State>((set, get) => {
           try {
             const h = await api.health()
             set({ health: h })
+            const down = adaDownMessage(h.ada)
+            if (down) announceAdaDown(down)
             if (h.ada.phase === 'loading' || h.ada.phase === 'idle') setTimeout(poll, 1500)
           } catch { /* el servidor se cayó: la interfaz lo mostrará en la próxima petición */ }
         }

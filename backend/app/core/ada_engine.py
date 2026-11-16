@@ -123,6 +123,18 @@ def status() -> dict[str, Any]:
             "mode": _state["mode"], "note": _state["note"], "root": str(config.ada_root()) if _state["mode"] == "local" else None}
 
 
+def ensure_usable() -> None:
+    """El proceso (perfil, limpieza, guardado) lo hace Ada. Si Ada no se puede usar (ni está en este equipo, ni hay API configurada, o falló al cargar) se avisa
+    con AdaUnavailable —el panel abre el modal— en vez de seguir por la libre. Con Python elegido, o con Ada remota (ahí un fallo sale al llamarla), no estorba."""
+    if _pref["motor"] == "python" or process_remote():
+        return
+    if _want() != "remote" and not config.ada_present() and remote_config() is None:
+        raise AdaUnavailable(f"No encuentro Ada en {config.ada_root() / 'src'}. Define ADA_ROOT (o ADA_REMOTE_URL y ADA_REMOTE_KEY para usar la API de Ada).")
+    start_loading()
+    if _state["phase"] == "error":
+        raise AdaUnavailable(re.sub(r"^\w*(Error|Exception): ", "", _state["error"] or "") or "Ada no está disponible.")
+
+
 def require() -> SimpleNamespace:
     """Módulos estadísticos en uso (Ada local, Ada remota o Python local). Si Ada no se puede usar, lanza AdaUnavailable (503 «ada_no_disponible»)
     o, si solo se está cargando, AdaNotReady (503 «ada_cargando»)."""

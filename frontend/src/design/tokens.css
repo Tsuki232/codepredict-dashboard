@@ -115,6 +115,7 @@ body {
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 /* Modal «Ada no disponible» (elemento <dialog>: foco atrapado y Escape para cerrar vienen del navegador) */
 .ada-dialog {
+  position: fixed; inset: 0; margin: auto; height: fit-content;   /* centrado en la pantalla (el reinicio de estilos quita el margin:auto que el navegador pone a los <dialog>) */
   width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; padding: 24px;
   color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 10px;
   box-shadow: 0 24px 60px -20px color-mix(in srgb, var(--ink) 45%, transparent);

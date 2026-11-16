@@ -113,6 +113,7 @@ def _raw():
 
 @router.get("/dataset/profile")
 def profile() -> dict:
+    ada_engine.ensure_usable()               # sin Ada (y sin haber elegido Python) → 503 «ada_no_disponible» y el panel abre el modal
     if ada_engine.process_remote():          # Ada lee su copia del CSV y devuelve el perfil
         return ada_proceso.perfil()
     try:
@@ -156,6 +157,7 @@ def defaults() -> dict:
 
 @router.post("/clean/preview")
 def preview(rules: cleaning.Rules) -> dict:
+    ada_engine.ensure_usable()
     if ada_engine.process_remote():          # Ada limpia en su equipo (cada regla verificada pandas/DuckDB) y devuelve la vista previa
         return ada_proceso.vista(rules)
     _raw()                                   # mismos errores 404/422 de siempre si falta el CSV
@@ -170,6 +172,7 @@ def status() -> dict:
 
 @router.post("/clean/apply")
 def apply(rules: cleaning.Rules) -> dict:
+    ada_engine.ensure_usable()
     try:
         return workspace.apply_cleaning(rules)
     except workspace.NotVerified as e:

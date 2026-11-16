@@ -51,8 +51,10 @@ def test_sin_ada_la_inferencia_responde_503_con_el_codigo_que_abre_el_modal(clie
     _esperar_a_ada(cliente)
     r = cliente.post("/api/inference/live", json={})
     assert r.status_code == 503 and r.json()["code"] == "ada_no_disponible" and "ADA_REMOTE_URL" in r.json()["detail"]
-    assert cliente.get("/api/dataset/profile").status_code == 200, "el perfil y la limpieza locales siguen funcionando sin Ada"
-    assert cliente.post("/api/clean/preview", json={}).status_code == 200
+    for r in (cliente.get("/api/dataset/profile"), cliente.post("/api/clean/preview", json={}), cliente.post("/api/clean/apply", json={})):
+        assert r.status_code == 503 and r.json()["code"] == "ada_no_disponible", "el proceso es de Ada: sin Ada avisa desde el principio, no sigue por la libre"
+    cliente.post("/api/engine", json={"motor": "python"})
+    assert cliente.get("/api/dataset/profile").status_code == 200 and cliente.post("/api/clean/preview", json={}).status_code == 200, "con Python elegido funciona todo"
 
 
 def test_mientras_ada_carga_el_503_es_cargando_y_no_abre_el_modal(cliente, monkeypatch):
