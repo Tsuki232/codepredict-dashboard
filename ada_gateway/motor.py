@@ -33,7 +33,22 @@ def _cargar() -> None:
         from ada.pendulum import http_service as pendulo
         from ada.stats import inference, probability
 
-        _estado.update(ns=SimpleNamespace(inference=inference, probability=probability, pendulo=pendulo), fase="listo", error=None)
+        proceso, proceso_error = None, None
+        try:   # el proceso completo de CodePredict (perfil, limpieza, inferencia): si falla, las rutas de estadística y del péndulo siguen funcionando
+            backend = Path(__file__).resolve().parents[1] / "backend"
+            if str(backend) not in sys.path:
+                sys.path.insert(0, str(backend))
+            os.environ["ADA_ENGINE"] = "local"     # dentro de la puerta de enlace el motor es SIEMPRE el Ada de este equipo (nunca otra API ni Python)
+            for k in ("ADA_REMOTE_URL", "ADA_REMOTE_KEY"):
+                os.environ.pop(k, None)
+            from app.core import ada_engine, cleaning, inference as inferencia, proceso as proc
+
+            ada_engine.start_loading()
+            proceso = SimpleNamespace(cleaning=cleaning, inference=inferencia, proceso=proc, ada_engine=ada_engine)
+        except Exception as e:  # noqa: BLE001
+            proceso_error = f"{type(e).__name__}: {e}"
+        _estado.update(ns=SimpleNamespace(inference=inference, probability=probability, pendulo=pendulo, codepredict=proceso, codepredict_error=proceso_error),
+                       fase="listo", error=None)
     except Exception as e:  # noqa: BLE001  (se informa tal cual; no se oculta)
         _estado.update(fase="error", error=f"{type(e).__name__}: {e}")
 

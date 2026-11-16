@@ -1,4 +1,8 @@
 import type { Health, InferenceResult, Manifest, NbCell, NbResult, Preview, Profile, Rules } from '../state/types'
+import { announceAdaDown, isAdaDownCode } from './engine'
+
+/** Motor elegido (Ada o Python local) y estado de Ada, tal como lo informa el servidor del panel. */
+export interface EngineInfo { motor: 'ada' | 'python'; proceso_en_ada_remota: boolean; ada: Health['ada'] }
 
 /** Cabeceras comunes de la API (incluye la clave si se definió VITE_API_KEY). */
 export function apiHeaders(): Record<string, string> {
@@ -9,7 +13,7 @@ export function apiHeaders(): Record<string, string> {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) { super(message) }
+  constructor(public status: number, message: string, public code?: string) { super(message) }
 }
 
 async function call<T>(path: string, init?: RequestInit, timeoutMs = 120_000): Promise<T> {
@@ -19,8 +23,10 @@ async function call<T>(path: string, init?: RequestInit, timeoutMs = 120_000): P
     const r = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', ...apiHeaders() }, signal: ctl.signal })
     if (!r.ok) {
       let msg = `Error ${r.status}`
-      try { const j = await r.json(); if (typeof j?.detail === 'string') msg = j.detail } catch { /* sin cuerpo JSON */ }
-      throw new ApiError(r.status, msg)
+      let code: string | undefined
+      try { const j = await r.json(); if (typeof j?.detail === 'string') msg = j.detail; if (typeof j?.code === 'string') code = j.code } catch { /* sin cuerpo JSON */ }
+      if (isAdaDownCode(code)) announceAdaDown(msg)   // el panel abre el modal: seguir con Python local o reintentar con Ada
+      throw new ApiError(r.status, msg, code)
     }
     return (await r.json()) as T
   } catch (e) {
@@ -36,6 +42,8 @@ const post = <T>(path: string, body: unknown) => call<T>(path, { method: 'POST',
 
 export const api = {
   health: () => call<Health>('/api/health', undefined, 8000),
+  engine: () => call<EngineInfo>('/api/engine', undefined, 8000),
+  setEngine: (motor: 'ada' | 'python') => post<EngineInfo>('/api/engine', { motor }),
   profile: () => call<Profile>('/api/dataset/profile'),
   defaults: () => call<Rules>('/api/clean/defaults', undefined, 8000),
   preview: (rules: Rules) => post<Preview>('/api/clean/preview', rules),

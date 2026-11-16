@@ -43,6 +43,7 @@ interface State {
 
   profile: Profile | null
   profileError: string | null
+  profileAdaDown: boolean
 
   rules: Rules
   preview: Preview | null
@@ -101,7 +102,7 @@ export const useStore = create<State>((set, get) => {
 
   return {
     theme: initialTheme(), view: viewFromHash(), health: null, serverError: null, booting: true,
-    profile: null, profileError: null,
+    profile: null, profileError: null, profileAdaDown: false,
     rules: FALLBACK_RULES, preview: null, previewBusy: false, previewError: null,
     applied: null, applying: false, applyError: null,
     alpha: 0.05, alternative: 'two-sided', inference: null, inferenceBusy: false, inferenceError: null,
@@ -135,7 +136,8 @@ export const useStore = create<State>((set, get) => {
         }
         // Todo lo demás se pide en paralelo; cada parte falla por separado y lo dice.
         const [prof, defaults, status] = await Promise.allSettled([api.profile(), api.defaults(), api.status()])
-        if (prof.status === 'fulfilled') set({ profile: prof.value }); else set({ profileError: (prof.reason as Error).message })
+        if (prof.status === 'fulfilled') set({ profile: prof.value })
+        else set({ profileError: (prof.reason as Error).message, profileAdaDown: (prof.reason as { code?: string }).code === 'ada_no_disponible' })
         if (defaults.status === 'fulfilled') set({ rules: defaults.value })
         if (status.status === 'fulfilled' && status.value.manifest) {
           // Si ya había una limpieza guardada, las reglas de la pantalla parten de ellas.

@@ -1,11 +1,16 @@
 """Puente con Ada, el motor estadístico verificado (cada resultado se calcula por dos vías independientes).
 
-Importar Ada tarda (en un disco lento, ~20 s la primera vez), así que se carga en un hilo al arrancar y los
-endpoints preguntan `status()`. Si Ada no está, la limpieza funciona igual; la inferencia avisa con claridad.
+Hay tres formas de trabajar y el panel muestra siempre cuál está en uso:
+  · Ada LOCAL     Ada está en este equipo (carpeta ..\\Ada o ADA_ROOT): se importa en un hilo al arrancar.
+  · Ada REMOTA    Ada está en otro equipo del grupo: el panel le pide TODO el proceso (perfil, limpieza, inferencia) por su API (ADA_REMOTE_URL y ADA_REMOTE_KEY).
+  · Python local  La persona eligió seguir sin Ada (modal «Ada no disponible»): limpieza y estadística calculadas aquí, con doble verificación propia (pystats).
+ADA_ENGINE=auto (por defecto) usa Ada local si está y, si no, Ada remota; «local» o «remote» fuerzan una de las dos (para probar).
+El modo Python solo se activa por decisión explícita de la persona (`set_motor('python')`); nunca se cae a él en silencio.
 """
 from __future__ import annotations
 
 import os
+import re
 import sys
 import threading
 import time
@@ -17,6 +22,16 @@ from app.core import config
 _lock = threading.Lock()
 _state: dict[str, Any] = {"phase": "idle", "error": None, "seconds": None, "mode": None, "note": None}
 _mods: SimpleNamespace | None = None
+_pref: dict[str, str] = {"motor": "ada"}      # «ada» (local o remota) o «python»; lo cambia la persona con el modal
+_py_mods: SimpleNamespace | None = None
+
+
+class AdaNotReady(Exception):
+    """Ada todavía se está cargando: pasa sola en unos segundos (la API responde 503 con code «ada_cargando»)."""
+
+
+class AdaUnavailable(AdaNotReady):
+    """Ada no se puede usar: no está instalada ni configurada, no responde, rechazó la clave... (503 con code «ada_no_disponible»: el panel ofrece Python)."""
 
 
 def remote_config() -> tuple[str, str] | None:
@@ -25,23 +40,47 @@ def remote_config() -> tuple[str, str] | None:
     return (url, key) if url.startswith(("http://", "https://")) and key else None
 
 
+def _want() -> str:
+    want = (os.getenv("ADA_ENGINE") or "auto").strip().lower()
+    return want if want in ("auto", "local", "remote") else "auto"     # vacío (como en .env.example) o mal escrito: «auto»
+
+
+# ----------------------------------------------------------------------------- elección de la persona: Ada o Python
+
+
+def preferred() -> str:
+    return _pref["motor"]
+
+
+def set_motor(motor: str) -> None:
+    if motor not in ("ada", "python"):
+        raise ValueError("motor debe ser 'ada' o 'python'")
+    _pref["motor"] = motor
+
+
+def process_remote() -> bool:
+    """¿Ada hace TODO el proceso (perfil, limpieza, inferencia) en otro equipo? Solo con la API configurada y sin Python elegido."""
+    if _pref["motor"] == "python" or remote_config() is None:
+        return False
+    return _want() == "remote" or (_want() == "auto" and not config.ada_present())
+
+
+# ----------------------------------------------------------------------------- carga de Ada (local o remota)
+
+
 def _load_remote(t0: float, note: str | None = None) -> None:
     global _mods
     from app.core import ada_remote
 
     url, key = remote_config()  # type: ignore[misc]  (el llamador ya comprobó que existe)
-    _mods = ada_remote.construir(url, key, AdaNotReady)
+    _mods = ada_remote.construir(url, key, AdaUnavailable)
     _state.update(phase="ready", error=None, seconds=round(time.time() - t0, 1), mode="remote", note=note)
 
 
 def _load() -> None:
-    """ADA_ENGINE=auto (por defecto): Ada local si está en este equipo; si no, la API remota (si hay ADA_REMOTE_URL y ADA_REMOTE_KEY).
-    ADA_ENGINE=local o remote fuerza una de las dos (para probar)."""
     global _mods
     t0 = time.time()
-    want = (os.getenv("ADA_ENGINE") or "auto").strip().lower()
-    if want not in ("auto", "local", "remote"):  # vacío (como en .env.example) o con un error de escritura: se comporta como «auto»
-        want = "auto"
+    want = _want()
     remote = remote_config()
     try:
         if want == "remote" or (want != "local" and not config.ada_present() and remote):
@@ -77,17 +116,26 @@ def start_loading() -> None:
 
 
 def status() -> dict[str, Any]:
-    return {"phase": _state["phase"], "ready": _state["phase"] == "ready", "error": _state["error"], "load_seconds": _state["seconds"],
-            "mode": _state["mode"], "note": _state["note"], "root": str(config.ada_root()) if _state["mode"] != "remote" else None}
+    if _pref["motor"] == "python":
+        return {"phase": "ready", "ready": True, "error": None, "load_seconds": 0, "mode": "python", "motor": "python", "root": None,
+                "note": "Motor local de Python (sin Ada), elegido por la persona. Cada resultado lleva su doble verificación propia."}
+    return {"phase": _state["phase"], "ready": _state["phase"] == "ready", "error": _state["error"], "load_seconds": _state["seconds"], "motor": "ada",
+            "mode": _state["mode"], "note": _state["note"], "root": str(config.ada_root()) if _state["mode"] == "local" else None}
 
 
 def require() -> SimpleNamespace:
-    """Devuelve los módulos de Ada o lanza AdaNotReady (que la API traduce a 503)."""
+    """Módulos estadísticos en uso (Ada local, Ada remota o Python local). Si Ada no se puede usar, lanza AdaUnavailable (503 «ada_no_disponible»)
+    o, si solo se está cargando, AdaNotReady (503 «ada_cargando»)."""
+    global _py_mods
+    if _pref["motor"] == "python":
+        if _py_mods is None:
+            from app.core import pystats
+
+            _py_mods = pystats.construir()
+        return _py_mods
     start_loading()
     if _state["phase"] == "ready" and _mods is not None:
         return _mods
-    raise AdaNotReady(_state["error"] or "Ada todavía se está cargando; vuelve a intentarlo en unos segundos.")
-
-
-class AdaNotReady(Exception):
-    pass
+    if _state["phase"] == "error":
+        raise AdaUnavailable(re.sub(r"^\w*(Error|Exception): ", "", _state["error"] or "") or "Ada no está disponible.")   # sin el nombre técnico de la excepción
+    raise AdaNotReady("Ada todavía se está cargando; vuelve a intentarlo en unos segundos.")

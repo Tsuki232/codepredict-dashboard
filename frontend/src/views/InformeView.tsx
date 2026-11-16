@@ -10,6 +10,7 @@ import { downloadFromApi, saveBlob } from '../lib/api'
 import { fmt, fmtInt, fmtP, fmtPct } from '../lib/format'
 import { expectedOf } from '../lib/stats'
 import { sameRules, useStore } from '../state/store'
+import { engineName } from '../lib/engine'
 import type { AdaTest } from '../state/types'
 import { SegmentedTabs } from '../ui/SegmentedTabs'
 
@@ -53,6 +54,7 @@ export function InformeView() {
   const [stamp, setStamp] = useState<Date>(new Date())
 
   const adaReady = !!ada?.ready
+  const motor = engineName(live?.meta.ada ?? ada)       // «Ada» o «Python local»: el informe nunca atribuye a Ada lo que calculó Python
   // El informe se recalcula solo: al cambiar reglas, α o la hipótesis se pide de nuevo la inferencia (agrupando cambios rápidos).
   useEffect(() => {
     if (!adaReady) return
@@ -134,7 +136,7 @@ export function InformeView() {
           <p className="rep-kicker">Estadística Inferencial y Ciencia de Datos</p>
           <h1>CodePredict AI: limpieza de datos e inferencia sobre complejidad y defectos</h1>
           <p className="rep-meta">Informe generado automáticamente el {today} · Unified Bug Dataset v1.2, nivel archivo</p>
-          <p className="rep-note"><strong>Borrador de apoyo.</strong> Las cifras las calculan scripts verificados (pandas, DuckDB y el motor Ada); el texto describe lo que dicen. Las decisiones de limpieza y la interpretación final son del grupo.</p>
+          <p className="rep-note"><strong>Borrador de apoyo.</strong> Las cifras las calculan scripts verificados (pandas, DuckDB y {motor === 'Ada' ? 'el motor Ada' : 'el motor estadístico local de Python, sin Ada'}); el texto describe lo que dicen. Las decisiones de limpieza y la interpretación final son del grupo.</p>
         </header>
 
         {!narrative ? <p className="label py-10" role="status">Recalculando con las nuevas opciones…</p> : (
@@ -183,7 +185,7 @@ export function InformeView() {
 
             <Sec n={4} title="Inferencia estadística">
               {!adaReady && <p className="rep-note">El motor Ada no está disponible en este momento, así que esta sección no se pudo calcular.</p>}
-              {adaReady && !live && <p className="label" role="status">Calculando con Ada…</p>}
+              {adaReady && !live && <p className="label" role="status">Calculando con {motor}…</p>}
               {live && g && narrative.welch && (
                 <>
                   <h3>4.1 Comparación de medias de McCC (Welch)</h3>
@@ -208,7 +210,7 @@ t = (x̄₁ − x̄₂) / √(s₁²/n₁ + s₂²/n₂)
                   <Tab n={++tab} caption="Tres formas de comparar los dos grupos.">
                     <table className="rep-table">
                       <thead><tr><th>Prueba</th><th>Estadístico</th><th>Valor p</th><th>Efecto</th><th>Decisión (α = {String(alpha).replace('.', ',')})</th><th>Calculada por</th></tr></thead>
-                      <tbody>{([['Welch sobre McCC', live.welch, 'Ada'], ['Welch sobre log(1 + McCC)', live.welch_log, 'Ada'], ['Mann-Whitney (rangos)', live.robust, 'Este panel (scipy + rangos)']] as [string, AdaTest, string][]).map(([name, t, by]) => (
+                      <tbody>{([['Welch sobre McCC', live.welch, motor], ['Welch sobre log(1 + McCC)', live.welch_log, motor], ['Mann-Whitney (rangos)', live.robust, 'Este panel (scipy + rangos)']] as [string, AdaTest, string][]).map(([name, t, by]) => (
                         <tr key={name}><td>{name}</td><td>{fmt(t.statistic, 2)}</td><td>{fmtP(t.p_value)}</td><td>{fmt(t.effect_size?.value, 3)}</td><td>{t.p_value < alpha ? 'Rechaza H₀' : 'No rechaza H₀'}</td><td>{by}</td></tr>
                       ))}</tbody>
                     </table>
@@ -243,7 +245,7 @@ t = (x̄₁ − x̄₂) / √(s₁²/n₁ + s₂²/n₂)
             </Sec>
 
             <Sec n={6} title="Declaración de uso de IA">
-              <p>Este informe y el panel que lo genera se construyeron con asistencia de Claude Code (Anthropic) a petición de Diego López, usando el motor estadístico Ada. Las cifras salen de scripts verificados con doble método, no se calcularon «a mano» por la IA. El grupo debe poder explicar cada línea del código y cada decisión, y la interpretación y las conclusiones del trabajo se redactan y defienden por el grupo.</p>
+              <p>Este informe y el panel que lo genera se construyeron con asistencia de Claude Code (Anthropic) a petición de Diego López, {motor === 'Ada' ? 'usando el motor estadístico Ada' : 'usando el motor estadístico local de Python (SciPy y fórmulas a mano; en este caso no se usó Ada)'}. Las cifras salen de scripts verificados con doble método, no se calcularon «a mano» por la IA. El grupo debe poder explicar cada línea del código y cada decisión, y la interpretación y las conclusiones del trabajo se redactan y defienden por el grupo.</p>
             </Sec>
 
             <Sec n={7} title="Referencias">

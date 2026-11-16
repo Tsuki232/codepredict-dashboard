@@ -192,3 +192,20 @@ def test_ADA_ENGINE_vacio_o_mal_escrito_se_comporta_como_auto(monkeypatch, tmp_p
     for valor in ("", "  ", "remoto?"):
         st = _recargar(monkeypatch, ADA_ENGINE=valor, ADA_ROOT=str(tmp_path / "no-existe"), ADA_REMOTE_URL=URL, ADA_REMOTE_KEY=CLAVE)
         assert st["ready"] and st["mode"] == "remote", valor
+
+
+def test_un_servidor_de_ada_viejo_sin_las_rutas_del_proceso_abre_el_modal_con_un_mensaje_claro(monkeypatch):
+    """Si el panel se actualiza antes que el servidor de Ada, la ruta no existe (404 «Not Found»): se explica y se ofrece Python, no un «Not Found» críptico."""
+    from app.core import ada_proceso
+
+    monkeypatch.setenv("ADA_REMOTE_URL", URL)
+    monkeypatch.setenv("ADA_REMOTE_KEY", CLAVE)
+    monkeypatch.setattr(ada_proceso.httpx, "Client", lambda **kw: REAL(transport=httpx.MockTransport(lambda req: httpx.Response(404, json={"detail": "Not Found"})), **kw))
+    with pytest.raises(ada_engine.AdaUnavailable, match="versión anterior") as e:
+        ada_proceso.vista(ada_proceso.cleaning.Rules())
+    assert CLAVE not in str(e.value)
+    # un 404 de verdad (falta el CSV en el equipo de Ada) NO se disfraza de «servidor viejo»
+    monkeypatch.setattr(ada_proceso.httpx, "Client", lambda **kw: REAL(transport=httpx.MockTransport(lambda req: httpx.Response(404, json={"detail": "Ada no encuentra el CSV de entrada en su equipo."})), **kw))
+    with pytest.raises(ada_proceso.ProcesoRemotoError) as e2:
+        ada_proceso.vista(ada_proceso.cleaning.Rules())
+    assert e2.value.status == 404 and "CSV" in e2.value.mensaje

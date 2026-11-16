@@ -65,12 +65,22 @@ con su doble verificación. Todas exigen `X-API-Key` (salvo `/ada/health`).
 | `POST /v1/stats/chi_cuadrado` | CodePredict | χ² de independencia de una tabla | |
 | `POST /v1/stats/dos_proporciones` | CodePredict | prueba z de dos proporciones | |
 | `POST /v1/stats/bayes` | CodePredict | P(D\|C) con Bayes a partir de la tabla 2×2 | |
+| `GET /v1/codepredict/perfil` | CodePredict | perfil del CSV que Ada tiene en su equipo | 60 (las cuatro `/v1/codepredict`) |
+| `POST /v1/codepredict/limpieza` | CodePredict | vista previa de la limpieza con esas reglas (cada regla verificada pandas/DuckDB) | |
+| `POST /v1/codepredict/inferencia` | CodePredict | limpieza + Welch, χ², dos proporciones y Bayes con esas reglas | |
+| `POST /v1/codepredict/limpio` | CodePredict | el conjunto limpio verificado (CSV comprimido, con tamaño y SHA-256) para que el panel lo guarde en su equipo | 10 |
+
+**El proceso completo de CodePredict (`/v1/codepredict/*`).** El panel manda solo las reglas de limpieza. Ada lee **su propia copia** del CSV (ruta fija en su equipo, `CODEPREDICT_DATASET` o `data/raw/Unified-file.csv`;
+nunca una ruta elegida por quien llama) y no escribe nada en disco: lo guardado lo escribe el panel en su propio equipo. Las reglas se validan (valores permitidos, umbrales finitos), el perfil y los errores no revelan las
+carpetas de este equipo, y si el CSV de Ada no es el mismo que el del panel (huella SHA-256 distinta) el panel no guarda nada. Si el servidor de Ada es de una versión anterior y no tiene estas rutas, el panel lo dice
+(«versión anterior… actualiza y reinicia») y ofrece el motor Python local.
 
 Límites: hasta 200 000 datos por grupo y 16 MB por petición; con más de 2 000 datos solo se permite Welch o Student sin sensibilidad (los otros métodos cuestan n₁·n₂ y dejarían el PC
 ocupado); como máximo 2 cálculos a la vez. Una clave inválida se rechaza **antes** de leer el cuerpo de la petición.
 
-- **CodePredict** lo usa solo si Ada no está en el equipo (o con `ADA_ENGINE=remote`): `ADA_REMOTE_URL` y `ADA_REMOTE_KEY` en el `.env`. Verificado: con las 32 509 filas del conjunto limpio, el
-  resultado por la API es idéntico al local en Welch, Welch sobre log(1+McCC), χ², dos proporciones y Bayes.
+- **CodePredict** lo usa solo si Ada no está en el equipo (o con `ADA_ENGINE=remote`): `ADA_REMOTE_URL` y `ADA_REMOTE_KEY` en el `.env`. Entonces Ada hace el proceso completo (perfil, limpieza, inferencia).
+  Verificado con el dataset real por el túnel: el perfil, la vista previa, el CSV limpio (mismo SHA-256) y los 11 bloques de la inferencia son idénticos a hacerlo en local (43 744 → 32 509 filas).
+  Si Ada no responde, el panel abre el aviso «Ada no está disponible» y ofrece el motor Python local (que la persona debe elegir; nunca se activa solo).
 - **El panel del péndulo** lo usa con `ADA_API_URL` (`https://…`) y `ADA_API_KEY` en su `.env`. Es una segunda opinión: sin Ada, con clave mala o con el PC apagado, el panel calcula igual.
 - La clave la guarda el **servidor** de cada panel; el navegador nunca la ve.
 

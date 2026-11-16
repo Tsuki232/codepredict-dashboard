@@ -1,6 +1,7 @@
 import { Loader } from 'lucide-react'
 import { useEffect } from 'react'
 import { AsistenteAda } from '../features/assistant/AsistenteAda'
+import { engineName } from '../lib/engine'
 import { Bars } from '../features/charts/Bars'
 import { Interval } from '../features/charts/Interval'
 import { Legend, LogHistogram } from '../features/charts/LogHistogram'
@@ -86,7 +87,7 @@ export function InferenciaView() {
         </div>
         <p className="small flex items-center gap-2" role="status">
           {!ready ? (ada?.phase === 'error' ? `Ada no está disponible: ${ada.error}` : <><Loader size={14} className="animate-spin" aria-hidden /> Ada se está cargando…</>)
-            : busy ? <><Loader size={14} className="animate-spin" aria-hidden /> Calculando con Ada…</> : fresh ? 'Calculado con Ada' : ''}
+            : busy ? <><Loader size={14} className="animate-spin" aria-hidden /> Calculando con {engineName(ada)}…</> : fresh ? `Calculado con ${engineName(ada)}` : ''}
         </p>
       </div>
 
@@ -138,8 +139,8 @@ t = (x̄₁ − x̄₂) / √(s₁²/n₁ + s₂²/n₂)
                 <thead><tr><th scope="col">Prueba</th><th scope="col">Estadístico</th><th scope="col">Valor p</th><th scope="col">Efecto</th><th scope="col">Decisión</th><th scope="col">Calculada por</th></tr></thead>
                 <tbody>
                   {([
-                    ['Welch sobre McCC', res.welch, 'Ada'],
-                    ['Welch sobre log(1 + McCC)', res.welch_log, 'Ada'],
+                    ['Welch sobre McCC', res.welch, engineName(res.meta.ada)],
+                    ['Welch sobre log(1 + McCC)', res.welch_log, engineName(res.meta.ada)],
                     ['Mann-Whitney (rangos)', res.robust, 'Dashboard (scipy + rangos)'],
                   ] as [string, AdaTest, string][]).map(([name, t, by]) => (
                     <tr key={name}>
@@ -254,7 +255,8 @@ conteo directo: ${fmtInt(res.bayes.counts.DC)} / ${fmtInt(res.bayes.counts.C)} =
             <Readout>
               <Row label="Datos">{fmtInt(res.meta.rows)} filas · SHA-256 {res.meta.sha256?.slice(0, 16)}…</Row>
               <Row label="Guardado">{new Date(res.meta.created_utc).toLocaleString('es-CO')}</Row>
-              <Row label="Motor">{res.meta.ada.mode === 'remote' ? 'Ada (API remota; el cálculo lo hace otro equipo)' : `Ada (${res.meta.ada.root})`}</Row>
+              <Row label="Motor">{res.meta.ada.mode === 'python' ? 'Python local (SciPy + fórmulas a mano), sin Ada'
+                : res.meta.ada.mode === 'remote' ? 'Ada (API remota; el cálculo lo hace otro equipo)' : `Ada (${res.meta.ada.root})`}</Row>
               <Row label="α y hipótesis">{res.meta.alpha} · {ALT_TEXT[res.meta.alternative]}</Row>
             </Readout>
           </Panel>

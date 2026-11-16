@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from app.core import ada_engine, cleaning, config, inference, notebook, workspace
+from app.core import ada_engine, ada_proceso, cleaning, config, inference, notebook, proceso, workspace
 
 router = APIRouter(prefix="/api")
 
@@ -88,9 +88,7 @@ def notebook_run(req: CellRequest) -> dict:
         raise HTTPException(404, f"No existe la celda {e}") from e
     except notebook.NotReady as e:
         raise HTTPException(409, str(e)) from e
-    except ada_engine.AdaNotReady as e:
-        raise HTTPException(503, str(e)) from e
-    except workspace.NotVerified as e:
+    except workspace.NotVerified as e:      # AdaNotReady/AdaUnavailable suben al manejador de main.py (503 con code «ada_cargando» o «ada_no_disponible»)
         raise HTTPException(409, str(e)) from e
     except (ValueError, FileNotFoundError) as e:
         raise HTTPException(422, str(e)) from e
@@ -115,11 +113,40 @@ def _raw():
 
 @router.get("/dataset/profile")
 def profile() -> dict:
-    raw, p = _raw()
-    out = cleaning.profile_raw(raw, cleaning.raw_nonnumeric(p))
-    out["source"] = {"path": str(p), "sha256": cleaning.sha256_file(p), "bytes": p.stat().st_size,
-                     "name": "Unified Bug Dataset v1.2 (Ferenc et al., 2020), nivel archivo"}
-    return out
+    if ada_engine.process_remote():          # Ada lee su copia del CSV y devuelve el perfil
+        return ada_proceso.perfil()
+    try:
+        return proceso.perfil()
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+class EngineRequest(BaseModel):
+    motor: Literal["ada", "python"]
+
+
+def _engine_info() -> dict[str, Any]:
+    return {"motor": ada_engine.preferred(), "proceso_en_ada_remota": ada_engine.process_remote(), "ada": ada_engine.status()}
+
+
+@router.get("/engine")
+def get_engine() -> dict:
+    return _engine_info()
+
+
+@router.post("/engine")
+def set_engine(req: EngineRequest) -> dict:
+    """La persona elige con qué motor trabajar: Ada (local o remota) o el motor local de Python (modal «Ada no disponible»).
+    Al cambiar se descartan los resultados guardados en memoria, para no mezclar cifras de dos motores."""
+    if req.motor != ada_engine.preferred():
+        ada_engine.set_motor(req.motor)
+        inference._cached.cache_clear()
+        inference._live_cached.cache_clear()
+        ada_proceso.limpiar_cache()
+        notebook.reset()
+    return _engine_info()
 
 
 @router.get("/clean/defaults")
@@ -129,20 +156,10 @@ def defaults() -> dict:
 
 @router.post("/clean/preview")
 def preview(rules: cleaning.Rules) -> dict:
-    raw, _ = _raw()
-    res = cleaning.run_pipeline(raw, rules, verify=True)
-    return {
-        "rules": rules.model_dump(),
-        "steps": [s.as_dict() for s in res.steps],
-        "verified": res.verified,
-        "rows_in": len(raw), "rows_out": len(res.frame),
-        "dropped_columns": res.dropped_columns,
-        "table2x2": cleaning.table2x2(res.frame),
-        "quick": cleaning.quick_stats(res.frame),
-        "hist": cleaning.histograms(raw, res.frame),
-        "fences": res.fences,
-        "impact": cleaning.policy_impact(raw, rules),
-    }
+    if ada_engine.process_remote():          # Ada limpia en su equipo (cada regla verificada pandas/DuckDB) y devuelve la vista previa
+        return ada_proceso.vista(rules)
+    _raw()                                   # mismos errores 404/422 de siempre si falta el CSV
+    return proceso.vista(rules)
 
 
 @router.get("/clean/status")
@@ -172,8 +189,6 @@ class InferenceRequest(BaseModel):
 def run_inference(req: InferenceRequest) -> dict:
     try:
         return inference.run(req.alpha, req.alternative)
-    except ada_engine.AdaNotReady as e:
-        raise HTTPException(503, str(e)) from e
     except FileNotFoundError as e:
         raise HTTPException(409, str(e)) from e
     except ValueError as e:
@@ -191,8 +206,6 @@ def inference_live(req: LiveRequest) -> dict:
     """Inferencia sobre las reglas de la pantalla (sin guardar). Alimenta el informe en vivo."""
     try:
         return inference.run_live(req.rules, req.alpha, req.alternative)
-    except ada_engine.AdaNotReady as e:
-        raise HTTPException(503, str(e)) from e
     except FileNotFoundError as e:
         raise HTTPException(404, str(e)) from e
     except ValueError as e:

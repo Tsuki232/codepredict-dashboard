@@ -34,7 +34,43 @@ def read_manifest() -> dict[str, Any] | None:
         return None
 
 
+def _apply_remote(rules: cleaning.Rules) -> dict[str, Any]:
+    """Ada (en otro equipo) hace la limpieza verificada y devuelve el CSV; aquí solo se comprueba y se guarda en la carpeta de trabajo (nunca en data/raw)."""
+    from app.core import ada_proceso
+
+    info, csv = ada_proceso.conjunto_limpio(rules)
+    src = config.dataset_path()
+    same = bool(cleaning.sha256_file(src) == info["input"]["sha256"]) if src.is_file() else None
+    if same is False:
+        raise ada_proceso.ProcesoRemotoError(409, "El CSV que usa Ada y el de este equipo no son el mismo archivo (huellas SHA-256 distintas): no se guardó. "
+                                                   "Actualiza el repositorio en uno de los dos equipos.")
+    out_dir = config.assert_safe_output(config.work_dir())
+    out_csv = config.assert_safe_output(out_dir / CLEAN_NAME)
+    out_man = config.assert_safe_output(out_dir / MANIFEST_NAME)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_csv.write_bytes(csv)
+    manifest: dict[str, Any] = {
+        "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "rules": rules.model_dump(),        # las de este panel, no la copia que Ada devuelve (ella las valida y pasa 10 a 10.0): así el manifiesto es igual al local
+        "input": {"path": f"(en el equipo de Ada) {info['input']['name']}", "sha256": info["input"]["sha256"], "rows": info["input"]["rows"], "same_as_local": same},
+        "output": {"path": str(out_csv), "sha256": cleaning.sha256_file(out_csv), "rows": info["output"]["rows"], "columns": info["output"]["columns"]},
+        "steps": info["steps"],
+        "dropped_columns": info["dropped_columns"],
+        "table2x2": info["table2x2"],
+        "verification": "cada regla: pandas contra DuckDB, coincidencia exacta de filas quitadas (hecho por Ada en otro equipo)",
+        "engine": "ada-remota",
+        "python": platform.python_version(),
+        "pandas": pd.__version__,
+        "audit": {"skipped": "El registro de auditoría de Ada lo lleva el PC que corre Ada, no este equipo."},
+    }
+    out_man.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    load_clean.cache_clear()
+    return manifest
+
+
 def apply_cleaning(rules: cleaning.Rules) -> dict[str, Any]:
+    if ada_engine.process_remote():
+        return _apply_remote(rules)
     src = config.dataset_path()
     raw = cleaning.load_raw(src)
     res = cleaning.run_pipeline(raw, rules, verify=True)
@@ -58,6 +94,7 @@ def apply_cleaning(rules: cleaning.Rules) -> dict[str, Any]:
         "dropped_columns": res.dropped_columns,
         "table2x2": cleaning.table2x2(res.frame),
         "verification": "cada regla: pandas contra DuckDB, coincidencia exacta de filas quitadas",
+        "engine": "python-local" if ada_engine.preferred() == "python" else "ada-local",
         "python": platform.python_version(),
         "pandas": pd.__version__,
     }

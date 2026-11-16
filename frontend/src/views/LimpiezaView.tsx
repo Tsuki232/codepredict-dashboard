@@ -165,7 +165,7 @@ export function LimpiezaView() {
             <Table2x2 t={preview.table2x2} caption="Archivos según complejidad (C) y defecto (D), con las reglas elegidas" />
           </Panel>
 
-          <Panel title="Guardar el conjunto limpio" note="Escribe una copia en la carpeta de trabajo de Ada (nunca en data/raw), con huella SHA-256 y un registro en la bitácora de auditoría. Solo se guarda si todos los pasos están verificados.">
+          <Panel title="Guardar el conjunto limpio" note="Escribe una copia en la carpeta de trabajo (nunca en data/raw), con huella SHA-256. Con Ada en este equipo, además deja un registro en su bitácora de auditoría. Solo se guarda si todos los pasos están verificados.">
             <div className="flex flex-wrap items-center gap-3">
               <button type="button" className="chip" style={{ height: 40, paddingInline: 18, background: 'var(--ink)', color: 'var(--bg)', borderColor: 'var(--ink)' }}
                 disabled={applying || !preview.verified || busy} onClick={() => void apply()}>

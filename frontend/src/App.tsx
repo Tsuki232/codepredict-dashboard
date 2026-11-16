@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react'
 import type { ComponentType } from 'react'
 import type { ViewId } from './app.config'
+import { AdaDownModal } from './features/engine/AdaDownModal'
 import { Shell } from './layout/Shell'
 import { useStore } from './state/store'
 import { BlurViewTransition } from './ui/BlurViewTransition'
@@ -54,6 +55,7 @@ export default function App() {
           </Suspense>
         </BlurViewTransition>
       )}
+      <AdaDownModal />
     </Shell>
   )
 }

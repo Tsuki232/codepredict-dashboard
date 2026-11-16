@@ -170,6 +170,10 @@ def run_live(rules: cleaning.Rules, alpha: float = 0.05, alternative: str = "two
         raise ValueError("alternative debe ser two-sided, greater o less")
     if not 0 < alpha < 1:
         raise ValueError("alpha debe estar en (0, 1)")
+    if ada_engine.process_remote():     # Ada hace la limpieza y la inferencia completas en su equipo; aquí solo se muestran
+        from app.core import ada_proceso
+
+        return ada_proceso.inferencia(rules, alpha, alternative)
     p = config.dataset_path()
     # La clave incluye la huella rápida del archivo (tamaño y fecha) para no usar resultados de otro CSV.
     return _live_cached(rules.model_dump_json(), f"{p}:{p.stat().st_size}:{p.stat().st_mtime_ns}", float(alpha), alternative)

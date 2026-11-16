@@ -11,7 +11,7 @@ if (-not (Test-Path "$root\frontend\dist")) {
 if (Test-Path $py) {
   & $py -m uvicorn app.main:app --app-dir "$root\backend" --host 127.0.0.1 --port 8000
 } elseif (Get-Command uv -ErrorAction SilentlyContinue) {
-  Write-Host "No encuentro el entorno de Ada ($py): se usa uv. La inferencia no estará disponible sin Ada (define ADA_ROOT)." -ForegroundColor Yellow
+  Write-Host "No encuentro el entorno de Ada ($py): se usa uv. Ada hara el proceso por su API si en .env estan ADA_REMOTE_URL y ADA_REMOTE_KEY; si no, el panel ofrecera el motor Python local." -ForegroundColor Yellow
   Push-Location "$root\backend"; $env:PYTHONPATH = "."; uv run uvicorn app.main:app --host 127.0.0.1 --port 8000; Pop-Location
 } else {
   Write-Host "No encuentro Python con las dependencias. Define ADA_ROOT o instala uv." -ForegroundColor Yellow; exit 1

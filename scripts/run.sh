@@ -6,5 +6,5 @@ ada="${ADA_ROOT:-$(dirname "$root")/Ada}"
 for py in "$ada/.venv/Scripts/python.exe" "$ada/.venv/bin/python"; do
   if [ -x "$py" ]; then exec "$py" -m uvicorn app.main:app --app-dir "$root/backend" --host 127.0.0.1 --port 8000; fi
 done
-echo "No encuentro el entorno de Ada: se usa uv (la inferencia no estará disponible sin Ada; define ADA_ROOT)." >&2
+echo "No encuentro el entorno de Ada: se usa uv. Ada hará el proceso por su API si .env tiene ADA_REMOTE_URL y ADA_REMOTE_KEY; si no, el panel ofrecerá el motor Python local." >&2
 cd "$root/backend" && PYTHONPATH=. uv run uvicorn app.main:app --host 127.0.0.1 --port 8000

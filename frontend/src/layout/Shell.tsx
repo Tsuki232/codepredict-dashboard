@@ -2,6 +2,7 @@ import { Moon, Sun } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { ReactNode } from 'react'
 import { ALL_ITEMS, APP, NAV, type ViewId, itemOf } from '../app.config'
+import { api } from '../lib/api'
 import { fmtInt } from '../lib/format'
 import { useStore } from '../state/store'
 import type { Health } from '../state/types'
@@ -40,6 +41,7 @@ function Item({ id }: { id: ViewId }) {
 function adaLabel(h: Health | null): { text: string; color: string } {
   if (!h) return { text: 'Ada: sin conexión', color: 'var(--bad)' }
   const a = h.ada
+  if (a.mode === 'python') return { text: 'Motor: Python local (sin Ada)', color: 'var(--warn)' }
   if (a.ready) return { text: a.mode === 'remote' ? 'Ada: lista (API remota)' : 'Ada: lista', color: 'var(--ok)' }
   if (a.phase === 'error') return { text: 'Ada: no disponible', color: 'var(--bad)' }
   return { text: 'Ada: cargando…', color: 'var(--warn)' }
@@ -65,6 +67,12 @@ export function Sidebar() {
       ))}
       <div className="mt-auto px-3 pt-6">
         <p className="small flex items-center gap-2"><span className="nav-dot" style={{ background: ada.color, margin: 0 }} aria-hidden /> {ada.text}</p>
+        {health?.ada.mode === 'python' && (
+          <button type="button" className="chip mt-2" style={{ height: 30 }}
+            onClick={() => { void api.setEngine('ada').then(() => window.location.reload()).catch(() => { /* el servidor lo dirá en la próxima petición */ }) }}>
+            Volver a Ada
+          </button>
+        )}
         {APP.footer.map((t) => <p key={t} className="small">{t}</p>)}
       </div>
     </aside>

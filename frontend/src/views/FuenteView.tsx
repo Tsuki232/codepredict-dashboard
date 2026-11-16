@@ -31,13 +31,16 @@ function Finding({ label, value, act, note }: { label: string; value: string; ac
 export function FuenteView() {
   const profile = useStore((s) => s.profile)
   const err = useStore((s) => s.profileError)
+  const adaDown = useStore((s) => s.profileAdaDown)
   const setView = useStore((s) => s.setView)
   const [v, setV] = useState<Var>('McCC')
   const [copied, setCopied] = useState(false)
 
   if (err || !profile) {
-    return <Panel title="No se pudo leer el conjunto de datos" note={err ?? 'Sin perfil todavía.'}>
-      <p className="small">Revisa que exista el CSV (variable CODEPREDICT_DATASET) y recarga la página.</p>
+    return <Panel title={adaDown ? 'Ada no está disponible' : 'No se pudo leer el conjunto de datos'} note={err ?? 'Sin perfil todavía.'}>
+      <p className="small">{adaDown
+        ? 'Elige en el aviso si seguir con el motor Python de este equipo o reintentar con Ada. Si lo cerraste, recarga la página.'
+        : 'Revisa que exista el CSV (variable CODEPREDICT_DATASET) y recarga la página.'}</p>
     </Panel>
   }
   const p = profile

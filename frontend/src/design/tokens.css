@@ -113,6 +113,13 @@ body {
 .chip:active { transform: scale(0.96); }
 .chip:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+/* Modal «Ada no disponible» (elemento <dialog>: foco atrapado y Escape para cerrar vienen del navegador) */
+.ada-dialog {
+  width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; padding: 24px;
+  color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 10px;
+  box-shadow: 0 24px 60px -20px color-mix(in srgb, var(--ink) 45%, transparent);
+}
+.ada-dialog::backdrop { background: color-mix(in srgb, var(--ink) 42%, transparent); }
 .btn-icon {
   display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 6px;
   background: transparent; border: 1px solid var(--rule); color: var(--ink); cursor: pointer;

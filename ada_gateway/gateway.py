@@ -17,6 +17,9 @@ Variables de entorno:
 from __future__ import annotations
 
 import asyncio
+import base64
+import gzip
+import hashlib
 import hmac
 import json
 import math
@@ -28,9 +31,9 @@ from collections import defaultdict, deque
 from typing import Any, Literal
 
 import httpx
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from ada_gateway import motor
 
@@ -362,3 +365,83 @@ def stats_bayes(req: CuentasBayes) -> dict[str, Any]:
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
     return {"result": None, "compact": _json(prob.compact_probability(res))}
+
+
+# ----------------------------------------------------------------------------- el proceso COMPLETO de CodePredict hecho por Ada
+# El panel manda solo las reglas de limpieza; Ada lee SU copia del CSV (ruta fija en este equipo, nunca elegida por quien llama), limpia con doble
+# verificación pandas/DuckDB, calcula y devuelve el resultado. Nada de esto escribe en disco; el panel guarda lo suyo en su propio equipo.
+
+RATE_CP = int(os.getenv("GATEWAY_RATE_CODEPREDICT_PER_MIN", "60"))
+RATE_CP_LIMPIO = int(os.getenv("GATEWAY_RATE_CODEPREDICT_LIMPIO_PER_MIN", "10"))   # entrega el CSV limpio (varios MB): más caro
+MAX_UMBRAL = 1e9
+
+
+def _cp():
+    ada = _motor()
+    if ada.codepredict is None:
+        raise HTTPException(503, f"El proceso de CodePredict no está disponible en este servidor: {ada.codepredict_error}")
+    return ada.codepredict
+
+
+def _reglas(cp, cuerpo: dict[str, Any]):
+    try:
+        r = cp.cleaning.Rules.model_validate(cuerpo)
+    except ValidationError as e:
+        raise HTTPException(422, f"Reglas de limpieza inválidas: {e.errors()[0].get('msg', 'revisa los valores')}") from None
+    if not all(math.isfinite(v) and abs(v) <= MAX_UMBRAL for v in (r.mccc_threshold, r.bug_threshold)):
+        raise HTTPException(422, "Los umbrales deben ser números finitos de tamaño razonable.")
+    return r
+
+
+def _ejecutar(cp, fn):
+    """Corre una función del proceso con el tope de cálculos simultáneos y traduce sus errores a respuestas claras."""
+    try:
+        with _Calculo():
+            return fn()
+    except FileNotFoundError:
+        raise HTTPException(404, "Ada no encuentra el CSV de entrada en su equipo.") from None
+    except cp.ada_engine.AdaNotReady as e:
+        raise HTTPException(503, str(e)) from None
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.get("/v1/codepredict/perfil", dependencies=[Depends(_acceso("cp", lambda: RATE_CP))])
+def cp_perfil() -> dict[str, Any]:
+    cp = _cp()
+    out = _ejecutar(cp, cp.proceso.perfil)
+    out["source"]["path"] = os.path.basename(str(out["source"]["path"]))     # no se revela la estructura de carpetas de este equipo
+    return _json(out)
+
+
+@app.post("/v1/codepredict/limpieza", dependencies=[Depends(_acceso("cp", lambda: RATE_CP))])
+def cp_limpieza(cuerpo: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    cp = _cp()
+    reglas = _reglas(cp, cuerpo)
+    return _json(_ejecutar(cp, lambda: cp.proceso.vista(reglas)))
+
+
+class InferenciaCP(BaseModel):
+    rules: dict[str, Any] = Field(default_factory=dict)
+    alpha: float = Field(0.05, gt=0, lt=1)
+    alternative: Literal["two-sided", "greater", "less"] = "two-sided"
+
+
+@app.post("/v1/codepredict/inferencia", dependencies=[Depends(_acceso("cp", lambda: RATE_CP))])
+def cp_inferencia(req: InferenciaCP) -> dict[str, Any]:
+    cp = _cp()
+    reglas = _reglas(cp, req.rules)
+    out = _ejecutar(cp, lambda: cp.inference.run_live(reglas, req.alpha, req.alternative))
+    out = _json(out)
+    out["meta"].pop("ada", None)      # el panel pone el suyo; aquí iría la ruta de carpetas de este equipo
+    return out
+
+
+@app.post("/v1/codepredict/limpio", dependencies=[Depends(_acceso("cp_limpio", lambda: RATE_CP_LIMPIO))])
+def cp_limpio(cuerpo: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    """El conjunto limpio ya verificado: datos del proceso + el CSV comprimido, con tamaño y huella SHA-256 para que el panel compruebe que llegó entero."""
+    cp = _cp()
+    reglas = _reglas(cp, cuerpo)
+    info, csv = _ejecutar(cp, lambda: cp.proceso.conjunto_limpio(reglas))
+    return {"info": _json(info), "csv_gzip_base64": base64.b64encode(gzip.compress(csv, 3)).decode("ascii"), "csv_bytes": len(csv),
+            "csv_sha256": hashlib.sha256(csv).hexdigest()}

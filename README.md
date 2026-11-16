@@ -40,10 +40,22 @@ en la GPU de un equipo del grupo y se alcanza por un túnel de Cloudflare con un
 está configurado o ese equipo está apagado, el panel funciona igual. Todo texto que genere es de una IA: si se usa en el informe, hay que declararlo.
 Cómo arrancarlo y configurarlo: [`docs/ASISTENTE.md`](docs/ASISTENTE.md).
 
-**Los cálculos también pueden salir de la API de Ada.** Si en tu equipo no está la carpeta de Ada pero tienes `ADA_REMOTE_URL` y `ADA_REMOTE_KEY` en el `.env`, el panel manda los datos a la
-API de Ada (la misma puerta de enlace) y ella calcula con doble verificación: Welch, χ², dos proporciones y Bayes. Es **el mismo cálculo**: con el conjunto completo (32 509 filas tras la limpieza)
-el resultado por la API es idéntico al local (Welch *t* = 26.3614, χ² = 2449.18, P(D|C) = 0.4164). La barra lateral lo indica («Ada: lista (API remota)»). Diferencias: tarda unos segundos más y
-la auditoría de la limpieza solo se escribe cuando Ada corre en el mismo equipo. `ADA_ENGINE=local|remote` fuerza una de las dos formas.
+### Ada hace todo el proceso (y qué pasa si no está)
+
+Si en tu equipo no está la carpeta de Ada pero tienes `ADA_REMOTE_URL` y `ADA_REMOTE_KEY` en el `.env`, **Ada hace el proceso completo en el PC del grupo que la corre**: lee el CSV de su copia,
+calcula el perfil, limpia con cada regla verificada (pandas contra DuckDB), calcula Welch, χ², dos proporciones y Bayes con doble verificación, y le entrega el resultado al panel. El panel solo manda
+las reglas de limpieza y muestra lo que recibe; si guardas la limpieza, el CSV limpio llega con su tamaño y su huella SHA-256 comprobados y se guarda en **este** equipo (nunca en `data/raw`).
+Con el conjunto completo (43 744 filas → 32 509) todo es idéntico a hacerlo en local: perfil, vista previa, CSV limpio (mismo SHA-256) y los resultados (Welch *t* = 26.3614, χ² = 2449.18, P(D|C) = 0.4164).
+La barra lateral dice «Ada: lista (API remota)». Si el CSV de Ada y el de este equipo no son el mismo archivo (huella distinta), el panel lo dice y no guarda nada.
+
+**Si Ada no está disponible** (PC apagado, sin túnel, clave mala, servidor de Ada desactualizado), el panel abre un aviso: *«Ada no está disponible»*, con tres opciones: **usar el motor Python de este equipo**,
+reintentar con Ada, o cerrar. Nunca cambia de motor en silencio.
+
+- **Motor Python local:** la limpieza y la estadística se calculan en este equipo (pandas, DuckDB y SciPy), cada resultado por dos vías independientes. Da lo mismo que Ada hasta 10⁻⁹ en Welch, χ²,
+  Fisher, dos proporciones y Bayes (hay pruebas que lo comparan). Lo que **no** tiene: el análisis de sensibilidad automático de Ada, otras pruebas y su registro de auditoría. Todo resultado se rotula
+  «Python local» y dice «sin Ada» en su sello de verificación; en el informe, la declaración de uso de IA también lo dice. La barra lateral muestra «Motor: Python local (sin Ada)» y un botón **Volver a Ada**.
+- El Cuaderno (celda por celda) limpia siempre en el equipo donde corre el panel; solo sus celdas de inferencia usan el motor elegido.
+- `ADA_ENGINE=local|remote` fuerza Ada en este equipo o la API (para probar). Por defecto: Ada local si está la carpeta de Ada y, si no, la API.
 
 ## Datos
 
@@ -66,15 +78,18 @@ Este panel usa **Ada como motor**, así que en este equipo corre con el entorno 
 - Ada se busca en `..\Ada` (o en la variable `ADA_ROOT`). Tarda en cargar la primera vez (~20 s); el panel lo indica.
 - El CSV de entrada es `data/raw/Unified-file.csv` (incluido en este repositorio, ver «Datos»); se puede cambiar con `CODEPREDICT_DATASET`.
 - El conjunto limpio y su `manifest.json` se guardan en `data/work/codepredict/` de este repositorio (ignorado por git) o, si Ada está presente, en la carpeta de trabajo de Ada; también se puede cambiar con `CODEPREDICT_WORK`. **Nunca se escribe en `data/raw/` ni se modifica el CSV original** (hay pruebas que lo verifican con huellas SHA-256).
-- Sin Ada, la fuente y la limpieza funcionan; la inferencia avisa que Ada no está disponible (no hay cálculo de respaldo que simule su resultado).
+- Sin Ada en el equipo y sin la API configurada, el panel avisa «Ada no está disponible» y ofrece el motor Python local (ver «Ada hace todo el proceso»); nunca simula un resultado de Ada.
+- **Equipo sin Ada (lo normal para los compañeros):** instala Python 3.12+ con `uv` y Node.js 20+, copia `.env.example` a `.env`, rellena `ADA_REMOTE_URL` y `ADA_REMOTE_KEY`, y ejecuta
+  `.\scripts\install.ps1` (instala todo y compila) y después `.\scripts\run.ps1`. Con la API, la inferencia sale de Ada en otro PC; ese PC debe estar encendido.
 
 Desarrollo con recarga: `uvicorn app.main:app --reload --app-dir backend` y, en `frontend/`, `npm run dev` (puerto 5173, con proxy a la API).
 
 ### Pruebas
 
 ```powershell
-cd backend;  ..\..\Ada\.venv\Scripts\python.exe -m pytest -q     # 34 pruebas (incluye cuaderno, inferencia en vivo y el CSV real)
-cd frontend; npm test                                              # 38 pruebas (contraste de colores, formato de cifras y texto del informe)
+cd backend;  ..\..\Ada\.venv\Scripts\python.exe -m pytest -q     # 90 pruebas (cuaderno, inferencia en vivo, CSV real, motor Python local contra Ada y Ada remota por la puerta de enlace real)
+cd frontend; npm test                                              # 43 pruebas (contraste de colores, cifras, texto del informe y aviso «Ada no disponible»)
+# puerta de enlace de Ada (en la raíz):  ..\Ada\.venv\Scripts\python.exe -m pytest -q ada_gateway/tests    # 36 pruebas
 ```
 
 Las pruebas de backend usan 10 filas inventadas con trampas conocidas (copia exacta, ruta repetida, `LOC < LLOC`, atípico) y una tabla 2×2 de 100 archivos, **con todos los resultados calculados a mano** (χ² = 50/3, z = √(50/3), P(D|C) = 0,6, Welch recalculado con la fórmula de Welch–Satterthwaite).

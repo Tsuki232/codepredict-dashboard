@@ -15,7 +15,7 @@ load_dotenv(ROOT / ".env")
 DIST = ROOT / "frontend" / "dist"
 
 from app.adapters.api.routes import router  # noqa: E402  (después de cargar .env: las rutas leen variables de entorno)
-from app.core import ada_engine  # noqa: E402
+from app.core import ada_engine, ada_proceso  # noqa: E402
 
 
 @asynccontextmanager
@@ -25,6 +25,18 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="CodePredict Dashboard — API", version="0.1.0", lifespan=lifespan)
+
+
+@app.exception_handler(ada_engine.AdaNotReady)
+async def ada_no_lista(_request: Request, e: ada_engine.AdaNotReady):
+    """503 con un `code` que el panel entiende: «ada_no_disponible» abre el modal (seguir con Python local o reintentar); «ada_cargando» solo espera."""
+    code = "ada_no_disponible" if isinstance(e, ada_engine.AdaUnavailable) else "ada_cargando"
+    return JSONResponse({"detail": str(e), "code": code}, status_code=503)
+
+
+@app.exception_handler(ada_proceso.ProcesoRemotoError)
+async def proceso_remoto_rechazado(_request: Request, e: ada_proceso.ProcesoRemotoError):
+    return JSONResponse({"detail": e.mensaje}, status_code=e.status if e.status in (404, 409, 413, 422) else 502)
 
 
 @app.middleware("http")
