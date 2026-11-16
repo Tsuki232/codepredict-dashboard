@@ -2,7 +2,9 @@
 # Uso (en el PC con la GPU):   .\scripts\start_ada_server.ps1            # con túnel (si cloudflared está disponible)
 #                              .\scripts\start_ada_server.ps1 -SinTunel  # solo local (127.0.0.1:8787), para probar
 # No toca ninguna cuenta de Cloudflare: el «túnel rápido» (trycloudflare.com) no usa cuenta ni token.
-param([switch]$SinTunel, [int]$Puerto = 8787)
+# Con -SinPrecarga no se carga el modelo en la GPU al arrancar (se carga en la primera petición): úselo en el inicio automático
+# para no dejar ~9 GB de VRAM ocupados cada vez que se prende el PC.
+param([switch]$SinTunel, [switch]$SinPrecarga, [int]$Puerto = 8787)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $gw = Join-Path $root "ada_gateway"
@@ -43,11 +45,13 @@ if ($yaViva) {
 }
 
 # 4) Precarga del modelo en la GPU (así la primera respuesta del grupo no espera la carga)
-try {
-    Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/generate" -Method Post -ContentType "application/json" -TimeoutSec 300 `
-        -Body (@{ model = "ada-q"; prompt = ""; keep_alive = "30m" } | ConvertTo-Json) | Out-Null
-    Write-Host "Modelo ada-q cargado en la GPU."
-} catch { Write-Host "Aviso: no pude precargar ada-q ($($_.Exception.Message)). Se cargará en la primera petición." -ForegroundColor Yellow }
+if ($SinPrecarga) { Write-Host "Sin precarga: ada-q se cargará en la GPU cuando llegue la primera petición." } else {
+    try {
+        Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/generate" -Method Post -ContentType "application/json" -TimeoutSec 300 `
+            -Body (@{ model = "ada-q"; prompt = ""; keep_alive = "30m" } | ConvertTo-Json) | Out-Null
+        Write-Host "Modelo ada-q cargado en la GPU."
+    } catch { Write-Host "Aviso: no pude precargar ada-q ($($_.Exception.Message)). Se cargará en la primera petición." -ForegroundColor Yellow }
+}
 
 # 5) Túnel rápido de Cloudflare (sin cuenta). La dirección CAMBIA cada vez que se reinicia.
 if ($SinTunel) { Write-Host "`nModo local: sin túnel. Prueba con http://127.0.0.1:$Puerto"; exit 0 }

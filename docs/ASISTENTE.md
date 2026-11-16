@@ -28,6 +28,19 @@ Navegador ──► servidor del panel (en cada equipo) ──► túnel de Clou
 - Falta el programa `cloudflared`: el script lo busca en el PATH o como `ada_gateway/cloudflared.exe`. Sin él, la puerta de enlace funciona en local.
 - Una dirección **fija** exige un túnel con nombre y un dominio en una cuenta de Cloudflare. Si se hace, que sea una cuenta **propia del proyecto**, no una cuenta de trabajo con otros túneles.
 
+### Arranque manual y automático (sin Docker, sin virtualización)
+
+- **Manual, un clic:** doble clic en `scripts\iniciar_ada.cmd` (arranca todo y muestra la dirección) y `scripts\detener_ada.cmd` (lo apaga). Es lo mismo que los scripts de PowerShell, sin escribir comandos.
+- **Automático al iniciar sesión en Windows:** `scripts\inicio_automatico.ps1` crea (o quita) un acceso directo en la carpeta *Inicio* del usuario. No pide administrador y es reversible:
+  ```powershell
+  .\scripts\inicio_automatico.ps1                                 # ¿está activado?
+  .\scripts\inicio_automatico.ps1 -Accion Instalar -SoloMostrar   # enseña qué haría, sin cambiar nada
+  .\scripts\inicio_automatico.ps1 -Accion Instalar                # lo activa
+  .\scripts\inicio_automatico.ps1 -Accion Quitar                  # lo desactiva
+  ```
+  Arranca con `-SinPrecarga`: el modelo `ada-q` se carga en la GPU solo cuando alguien usa el asistente (así no se ocupan ~9 GB de VRAM cada vez que se prende el PC). El registro queda en `ada_gateway\inicio_automatico.log`.
+- **Límites:** el arranque automático ocurre al **iniciar sesión** (no antes), y si algún proceso se cae no se reinicia solo: se vuelve a ejecutar `iniciar_ada.cmd`. Docker (con `restart: unless-stopped`) sería más robusto, pero exige activar la virtualización en la BIOS.
+
 ## En el equipo de cada compañero
 
 En el archivo `.env` de su copia del panel (ya está ignorado por git):
