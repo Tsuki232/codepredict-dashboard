@@ -1,8 +1,10 @@
 """API de CodePredict Dashboard: perfil, limpieza (vista previa y aplicar) e inferencia con Ada."""
 from __future__ import annotations
 
-from typing import Literal
+import os
+from typing import Any, Literal
 
+import httpx
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -10,6 +12,53 @@ from pydantic import BaseModel
 from app.core import ada_engine, cleaning, config, inference, notebook, workspace
 
 router = APIRouter(prefix="/api")
+
+
+# ----------------------------------------------------------------------------- asistente (Ada con modelo de lenguaje, por un túnel)
+
+
+def _remoto() -> tuple[str, str] | None:
+    """URL y clave del asistente: SOLO de variables de entorno (el cliente no puede elegir a dónde se conecta el servidor)."""
+    url, key = os.getenv("ADA_REMOTE_URL", "").strip().rstrip("/"), os.getenv("ADA_REMOTE_KEY", "").strip()
+    return (url, key) if url.startswith(("http://", "https://")) and key else None
+
+
+@router.get("/assistant/status")
+async def assistant_status() -> dict[str, Any]:
+    r = _remoto()
+    if r is None:
+        return {"configured": False, "reachable": False, "detail": "No está configurado (ADA_REMOTE_URL y ADA_REMOTE_KEY en el archivo .env)."}
+    try:
+        async with httpx.AsyncClient(timeout=4) as c:
+            ok = (await c.get(f"{r[0]}/health")).status_code == 200
+    except httpx.HTTPError:
+        ok = False
+    return {"configured": True, "reachable": ok, "detail": "Listo." if ok else "No responde: el PC que corre Ada puede estar apagado."}
+
+
+class AssistantRequest(BaseModel):
+    modo: Literal["explicar", "repaso"] = "explicar"
+    resultado: dict[str, Any]
+
+
+@router.post("/assistant/explain")
+async def assistant_explain(req: AssistantRequest) -> dict[str, Any]:
+    """Reenvía un resultado ya calculado a la puerta de enlace de Ada y devuelve su explicación. La clave no sale del servidor."""
+    r = _remoto()
+    if r is None:
+        raise HTTPException(503, "El asistente no está configurado en este equipo (faltan ADA_REMOTE_URL y ADA_REMOTE_KEY en .env).")
+    try:
+        async with httpx.AsyncClient(timeout=200) as c:
+            resp = await c.post(f"{r[0]}/v1/explicar", json=req.model_dump(), headers={"X-API-Key": r[1]})
+    except httpx.HTTPError:
+        raise HTTPException(503, "El asistente no responde: el PC que corre Ada puede estar apagado o sin túnel.") from None
+    if resp.status_code == 401:
+        raise HTTPException(502, "El asistente rechazó la clave: revisa ADA_REMOTE_KEY.")
+    if resp.status_code != 200:
+        detalle = resp.json().get("detail", "error") if resp.headers.get("content-type", "").startswith("application/json") else "error"
+        raise HTTPException(resp.status_code if resp.status_code in (413, 429, 503) else 502, f"El asistente respondió: {detalle}")
+    d = resp.json()
+    return {k: d.get(k) for k in ("texto", "modelo", "segundos", "cifras_no_verificadas")}
 
 
 # ----------------------------------------------------------------------------- cuaderno (celda por celda)

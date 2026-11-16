@@ -33,6 +33,13 @@ La carpeta [`informe/`](informe/LEEME.md) tiene la **sección de resultados** li
 
 **Qué falta para completar el informe:** ver [`informe/PENDIENTE.txt`](informe/PENDIENTE.txt) (decisiones del grupo, discusión y conclusiones, el modelo predictivo que aún no existe, armado final y referencias por verificar).
 
+## Asistente Ada (opcional)
+
+En la vista *Inferencia* hay un asistente que **explica en palabras sencillas** un resultado ya calculado, o escribe preguntas de repaso. Usa a Ada con modelo de lenguaje, que corre
+en la GPU de un equipo del grupo y se alcanza por un túnel de Cloudflare con una **puerta de enlace restringida** (solo texto, con clave, sin herramientas). No calcula nada y, si no
+está configurado o ese equipo está apagado, el panel funciona igual. Todo texto que genere es de una IA: si se usa en el informe, hay que declararlo.
+Cómo arrancarlo y configurarlo: [`docs/ASISTENTE.md`](docs/ASISTENTE.md).
+
 ## Datos
 
 Este repositorio incluye **solo el archivo que usa el panel**: `data/raw/Unified-file.csv` (nivel archivo, 43 744 filas, 7 MB), tomado sin modificar del

@@ -46,7 +46,13 @@ export const api = {
   nbCells: () => call<{ cells: NbCell[]; done: Record<string, number>; count: number }>('/api/notebook/cells', undefined, 8000),
   nbReset: () => post<{ done: Record<string, number> }>('/api/notebook/reset', {}),
   nbRun: (cell_id: string, rules: Rules, alpha: number, alternative: string) => post<NbResult>('/api/notebook/run', { cell_id, rules, alpha, alternative }),
+  assistantStatus: () => call<{ configured: boolean; reachable: boolean; detail: string }>('/api/assistant/status', undefined, 8000),
+  // La primera respuesta carga el modelo en la GPU: puede tardar más de un minuto.
+  assistantExplain: (modo: 'explicar' | 'repaso', resultado: Record<string, unknown>) =>
+    call<AssistantReply>('/api/assistant/explain', { method: 'POST', body: JSON.stringify({ modo, resultado }) }, 220_000),
 }
+
+export interface AssistantReply { texto: string; modelo: string; segundos: number; cifras_no_verificadas: string[] }
 
 /** Descarga un archivo de la API (respeta la clave, que un enlace simple no enviaría). */
 export async function downloadFromApi(url: string, filename: string): Promise<void> {

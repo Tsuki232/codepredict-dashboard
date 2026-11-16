@@ -1,5 +1,6 @@
 import { Loader } from 'lucide-react'
 import { useEffect } from 'react'
+import { AsistenteAda } from '../features/assistant/AsistenteAda'
 import { Bars } from '../features/charts/Bars'
 import { Interval } from '../features/charts/Interval'
 import { Legend, LogHistogram } from '../features/charts/LogHistogram'
@@ -236,6 +237,8 @@ conteo directo: ${fmtInt(res.bayes.counts.DC)} / ${fmtInt(res.bayes.counts.C)} =
             </div>
             <Warnings items={res.bayes.warnings} />
           </Panel>
+
+          <AsistenteAda res={res} />
 
           <Panel title="Límites de estas conclusiones" note="Lo que estos números no dicen.">
             <ul className="small flex flex-col gap-2">
