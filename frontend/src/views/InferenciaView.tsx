@@ -254,7 +254,7 @@ conteo directo: ${fmtInt(res.bayes.counts.DC)} / ${fmtInt(res.bayes.counts.C)} =
             <Readout>
               <Row label="Datos">{fmtInt(res.meta.rows)} filas · SHA-256 {res.meta.sha256?.slice(0, 16)}…</Row>
               <Row label="Guardado">{new Date(res.meta.created_utc).toLocaleString('es-CO')}</Row>
-              <Row label="Motor">Ada ({res.meta.ada.root})</Row>
+              <Row label="Motor">{res.meta.ada.mode === 'remote' ? 'Ada (API remota; el cálculo lo hace otro equipo)' : `Ada (${res.meta.ada.root})`}</Row>
               <Row label="α y hipótesis">{res.meta.alpha} · {ALT_TEXT[res.meta.alternative]}</Row>
             </Readout>
           </Panel>

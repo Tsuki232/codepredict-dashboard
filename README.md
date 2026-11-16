@@ -40,6 +40,11 @@ en la GPU de un equipo del grupo y se alcanza por un túnel de Cloudflare con un
 está configurado o ese equipo está apagado, el panel funciona igual. Todo texto que genere es de una IA: si se usa en el informe, hay que declararlo.
 Cómo arrancarlo y configurarlo: [`docs/ASISTENTE.md`](docs/ASISTENTE.md).
 
+**Los cálculos también pueden salir de la API de Ada.** Si en tu equipo no está la carpeta de Ada pero tienes `ADA_REMOTE_URL` y `ADA_REMOTE_KEY` en el `.env`, el panel manda los datos a la
+API de Ada (la misma puerta de enlace) y ella calcula con doble verificación: Welch, χ², dos proporciones y Bayes. Es **el mismo cálculo**: con el conjunto completo (32 509 filas tras la limpieza)
+el resultado por la API es idéntico al local (Welch *t* = 26.3614, χ² = 2449.18, P(D|C) = 0.4164). La barra lateral lo indica («Ada: lista (API remota)»). Diferencias: tarda unos segundos más y
+la auditoría de la limpieza solo se escribe cuando Ada corre en el mismo equipo. `ADA_ENGINE=local|remote` fuerza una de las dos formas.
+
 ## Datos
 
 Este repositorio incluye **solo el archivo que usa el panel**: `data/raw/Unified-file.csv` (nivel archivo, 43 744 filas, 7 MB), tomado sin modificar del

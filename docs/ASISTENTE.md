@@ -52,10 +52,34 @@ ADA_REMOTE_KEY=la-clave-que-les-pasaron
 
 Reinician el panel y, en la vista **Inferencia**, aparece el panel «Asistente Ada».
 
+## La API de Ada para los cálculos (CodePredict y el péndulo)
+
+La misma puerta de enlace (y la misma clave) sirve **cálculos verificados** a los dos proyectos. Son funciones fijas de Ada, no un chat: cada una recibe números y devuelve el resultado
+con su doble verificación. Todas exigen `X-API-Key` (salvo `/ada/health`).
+
+| Ruta | Quién la usa | Qué calcula | Límite por minuto |
+|---|---|---|---|
+| `GET /ada/health` | ambos (público, mínimo) | si el motor de Ada ya cargó | — |
+| `GET /ada/pendulum/verify?theta0_deg&L&g` | panel del péndulo | período por integral elíptica y por EDO DOP853; ángulo crítico | 240 |
+| `POST /v1/stats/dos_grupos` | CodePredict | comparación de dos grupos (Welch por defecto) | 120 (todas las `/v1/stats`) |
+| `POST /v1/stats/chi_cuadrado` | CodePredict | χ² de independencia de una tabla | |
+| `POST /v1/stats/dos_proporciones` | CodePredict | prueba z de dos proporciones | |
+| `POST /v1/stats/bayes` | CodePredict | P(D\|C) con Bayes a partir de la tabla 2×2 | |
+
+Límites: hasta 200 000 datos por grupo y 16 MB por petición; con más de 2 000 datos solo se permite Welch o Student sin sensibilidad (los otros métodos cuestan n₁·n₂ y dejarían el PC
+ocupado); como máximo 2 cálculos a la vez. Una clave inválida se rechaza **antes** de leer el cuerpo de la petición.
+
+- **CodePredict** lo usa solo si Ada no está en el equipo (o con `ADA_ENGINE=remote`): `ADA_REMOTE_URL` y `ADA_REMOTE_KEY` en el `.env`. Verificado: con las 32 509 filas del conjunto limpio, el
+  resultado por la API es idéntico al local en Welch, Welch sobre log(1+McCC), χ², dos proporciones y Bayes.
+- **El panel del péndulo** lo usa con `ADA_API_URL` (`https://…`) y `ADA_API_KEY` en su `.env`. Es una segunda opinión: sin Ada, con clave mala o con el PC apagado, el panel calcula igual.
+- La clave la guarda el **servidor** de cada panel; el navegador nunca la ve.
+
 ## Seguridad (por qué es seguro exponerlo, y qué no hacer)
 
-- La puerta de enlace solo acepta `explicar` o `repaso` con un resultado en JSON; **no hay chat libre ni herramientas**. El resultado se trata como datos, dentro de `<resultado>…</resultado>`.
-- Exige clave (`X-API-Key`), limita el tamaño de la entrada, las peticiones por minuto (10), los tokens de la respuesta y atiende una petición a la vez.
+- Para el asistente de lenguaje, la puerta de enlace solo acepta `explicar` o `repaso` con un resultado en JSON; **no hay chat libre ni herramientas**. El resultado se trata como datos, dentro de `<resultado>…</resultado>`.
+  Las rutas de cálculo de arriba solo llaman a funciones estadísticas y del péndulo de Ada con números validados; no leen ni escriben archivos.
+- Exige clave (`X-API-Key`), limita el tamaño de la entrada, las peticiones por minuto (10 el asistente de lenguaje; ver la tabla para el cálculo), los tokens de la respuesta y atiende una petición a la vez.
+- Los límites por minuto se cuentan por la dirección de origen que ve la puerta de enlace: no están pensados como cupo por persona (varios compañeros pueden compartirlo), solo como tope para que nadie sature el PC de la GPU.
 - Comprueba que cada cifra del texto generado exista en el resultado recibido; las que no, se muestran como «no verificadas».
 - Escucha solo en `127.0.0.1`. **Nunca** expongan el puerto de Ollama (11434) ni el agente completo de Ada: sus herramientas pueden leer y escribir archivos y ejecutar código.
 - Para cortar el acceso: `stop_ada_server.ps1`, o cambiar la clave (borrar `ada_gateway/.env.gateway` y volver a arrancar).

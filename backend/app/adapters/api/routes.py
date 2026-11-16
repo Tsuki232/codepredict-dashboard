@@ -1,7 +1,6 @@
 """API de CodePredict Dashboard: perfil, limpieza (vista previa y aplicar) e inferencia con Ada."""
 from __future__ import annotations
 
-import os
 from typing import Any, Literal
 
 import httpx
@@ -18,9 +17,8 @@ router = APIRouter(prefix="/api")
 
 
 def _remoto() -> tuple[str, str] | None:
-    """URL y clave del asistente: SOLO de variables de entorno (el cliente no puede elegir a dónde se conecta el servidor)."""
-    url, key = os.getenv("ADA_REMOTE_URL", "").strip().rstrip("/"), os.getenv("ADA_REMOTE_KEY", "").strip()
-    return (url, key) if url.startswith(("http://", "https://")) and key else None
+    """URL y clave de la API de Ada (la misma para el asistente y para el cálculo remoto): SOLO de variables de entorno."""
+    return ada_engine.remote_config()
 
 
 @router.get("/assistant/status")

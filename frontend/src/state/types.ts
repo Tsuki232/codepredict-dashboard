@@ -83,7 +83,7 @@ export interface Manifest {
 
 export interface Health {
   status: string
-  ada: { phase: 'idle' | 'loading' | 'ready' | 'error'; ready: boolean; error: string | null; load_seconds: number | null; root: string }
+  ada: { phase: 'idle' | 'loading' | 'ready' | 'error'; ready: boolean; error: string | null; load_seconds: number | null; mode?: 'local' | 'remote' | null; note?: string | null; root: string | null }
   dataset: { path: string; exists: boolean }
   work_dir: string
 }

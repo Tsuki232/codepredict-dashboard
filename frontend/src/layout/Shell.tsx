@@ -40,7 +40,7 @@ function Item({ id }: { id: ViewId }) {
 function adaLabel(h: Health | null): { text: string; color: string } {
   if (!h) return { text: 'Ada: sin conexión', color: 'var(--bad)' }
   const a = h.ada
-  if (a.ready) return { text: 'Ada: lista', color: 'var(--ok)' }
+  if (a.ready) return { text: a.mode === 'remote' ? 'Ada: lista (API remota)' : 'Ada: lista', color: 'var(--ok)' }
   if (a.phase === 'error') return { text: 'Ada: no disponible', color: 'var(--bad)' }
   return { text: 'Ada: cargando…', color: 'var(--warn)' }
 }

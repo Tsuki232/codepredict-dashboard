@@ -19,15 +19,20 @@ from __future__ import annotations
 import asyncio
 import hmac
 import json
+import math
 import os
 import re
+import threading
 import time
 from collections import defaultdict, deque
 from typing import Any, Literal
 
 import httpx
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+from ada_gateway import motor
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/v1").rstrip("/")
 MODEL = os.getenv("GATEWAY_MODEL", "ada-q")
@@ -64,12 +69,13 @@ def _clave_ok(dada: str | None) -> bool:
     return bool(esperada) and bool(dada) and hmac.compare_digest(dada.encode(), esperada.encode())
 
 
-def _limitar(cliente: str) -> None:
+def _limitar(cliente: str, cubo: str = "explicar", limite: int | None = None) -> None:
+    """Límite de peticiones por minuto, POR SERVICIO (cubo) y por cliente: explicar (lento, usa la GPU) es estricto; el péndulo (en caché) es holgado."""
     ahora = time.monotonic()
-    q = _hits[cliente]
+    q = _hits[f"{cubo}:{cliente}"]
     while q and ahora - q[0] > 60:
         q.popleft()
-    if len(q) >= RATE_PER_MIN:
+    if len(q) >= (RATE_PER_MIN if limite is None else limite):
         raise HTTPException(429, "Demasiadas peticiones: espera un minuto.")
     q.append(ahora)
 
@@ -169,3 +175,190 @@ async def explicar(req: Peticion, request: Request, x_api_key: str | None = Head
         _sem.release()
     texto = re.sub(r"<think>.*?</think>", "", texto, flags=re.S).strip()   # un modelo con razonamiento no debe filtrar su «pensamiento»
     return {"texto": texto, "modelo": MODEL, "segundos": round(time.monotonic() - t0, 2), "cifras_no_verificadas": cifras_no_verificadas(texto, req.resultado)}
+
+
+# ----------------------------------------------------------------------------- cálculo de Ada para cualquier panel (estadística y péndulo)
+# Mismas defensas que «explicar» (clave, tamaños acotados, ritmo por minuto), pero SOLO funciones de cálculo de Ada: nunca herramientas ni archivos.
+
+RATE_STATS = int(os.getenv("GATEWAY_RATE_STATS_PER_MIN", "120"))   # una vista del panel hace 5 cálculos; cambiar α rehace los 5
+RATE_PENDULO = int(os.getenv("GATEWAY_RATE_PENDULUM_PER_MIN", "240"))   # al mover un deslizador llegan decenas de peticiones (y se reutilizan de la caché)
+MAX_N = 200_000          # datos por grupo
+MAX_N_COSTOSO = 2_000    # sobre esto, los métodos con permutaciones/bootstrap (auto, Mann-Whitney, sensibilidad) se rechazan: cuestan n1·n2
+MAX_TABLA = 10
+MAX_CONTEO = 5_000_000
+_calc = threading.BoundedSemaphore(2)
+
+
+def _acceso(cubo: str, limite):
+    def dep(request: Request, x_api_key: str | None = Header(default=None)) -> None:
+        if not _clave_ok(x_api_key):
+            raise HTTPException(401, "Clave inválida.")
+        _limitar(request.client.host if request.client else "?", cubo, limite())
+    return dep
+
+
+def _motor():
+    try:
+        return motor.motor()
+    except motor.MotorNoListo as e:
+        raise HTTPException(503, str(e)) from None
+
+
+def _json(o: Any) -> Any:
+    """Convierte lo que devuelve Ada (numpy, nan, inf) a JSON estándar."""
+    if isinstance(o, dict):
+        return {str(k): _json(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_json(v) for v in o]
+    if hasattr(o, "item") and not isinstance(o, (str, bytes)):
+        try:
+            o = o.item()
+        except (ValueError, AttributeError):
+            return str(o)
+    if isinstance(o, float) and not math.isfinite(o):
+        return None
+    return o
+
+
+class _Calculo:
+    """Máximo 2 cálculos a la vez; si el servidor está saturado, 503 (no se encola sin límite)."""
+
+    def __enter__(self):
+        if not _calc.acquire(timeout=BUSY_WAIT_S):
+            raise HTTPException(503, "Ada está ocupada con otros cálculos; inténtalo en un momento.")
+
+    def __exit__(self, *exc):
+        _calc.release()
+
+
+MAX_CUERPO = 16 * 1024 * 1024   # bytes; 200 000 datos por grupo en JSON caben de sobra
+
+
+@app.middleware("http")
+async def _antes_de_leer_el_cuerpo(request: Request, call_next):
+    """FastAPI lee y analiza el cuerpo ANTES de resolver las dependencias: sin esto, quien no tiene clave podría
+    obligar al servidor a procesar cuerpos enormes. Se rechaza primero por clave y por tamaño declarado."""
+    if request.method == "POST":
+        if not _clave_ok(request.headers.get("x-api-key")):
+            return JSONResponse({"detail": "Clave inválida."}, status_code=401)
+        largo = request.headers.get("content-length", "")
+        if largo.isdigit() and int(largo) > MAX_CUERPO:
+            return JSONResponse({"detail": f"El cuerpo supera {MAX_CUERPO // 1024 // 1024} MB."}, status_code=413)
+    return await call_next(request)
+
+
+@app.on_event("startup")
+def _arrancar_motor() -> None:
+    motor.iniciar()     # carga Ada en segundo plano (tarda); mientras tanto las rutas de cálculo responden 503
+
+
+@app.get("/ada/health")
+def ada_health() -> dict[str, Any]:
+    """Público y mínimo (lo usan los paneles para saber si Ada está disponible)."""
+    return {"status": "ok", "service": "ada-gateway", "motor": motor.estado()["fase"]}
+
+
+@app.get("/ada/pendulum/verify", dependencies=[Depends(_acceso("pendulo", lambda: RATE_PENDULO))])
+def pendulo_verificar(
+    theta0_deg: float = Query(90.0, ge=0.1, le=170.0), L: float = Query(1.0, gt=0.05, le=20.0), g: float = Query(9.81, gt=0.1, le=30.0),
+    tolerance_pct: float = Query(1.0, ge=0.001, le=50.0), n_cycles: int = Query(10, ge=1, le=50),
+) -> dict[str, Any]:
+    """Mismo contrato que el servicio local del péndulo de Ada (`/ada/pendulum/verify`), para que el panel del péndulo solo cambie de dirección."""
+    ada = _motor()
+    with _Calculo():
+        return _json(ada.pendulo.verify(theta0_deg=theta0_deg, L=L, g=g, tolerance_pct=tolerance_pct, n_cycles=n_cycles))
+
+
+class DosGrupos(BaseModel):
+    x: list[float] = Field(..., min_length=2, max_length=MAX_N)
+    y: list[float] = Field(..., min_length=2, max_length=MAX_N)
+    alternative: Literal["two-sided", "greater", "less"] = "two-sided"
+    alpha: float = Field(0.05, gt=0, lt=1)
+    method: Literal["auto", "welch", "student", "mann_whitney"] = "welch"
+    sensitivity: bool = False
+
+
+@app.post("/v1/stats/dos_grupos", dependencies=[Depends(_acceso("stats", lambda: RATE_STATS))])
+def stats_dos_grupos(req: DosGrupos) -> dict[str, Any]:
+    """Compara dos grupos con `compare_two_groups` de Ada (doble verificación). Devuelve el resultado completo y el compacto."""
+    if len(req.x) + len(req.y) > MAX_N_COSTOSO and (req.method in ("auto", "mann_whitney") or req.sensitivity):
+        raise HTTPException(422, f"Con más de {MAX_N_COSTOSO} datos solo se permite method='welch' o 'student' sin sensibilidad (los demás cuestan n₁·n₂).")
+    inf = _motor().inference
+    try:
+        with _Calculo():
+            res = inf.compare_two_groups(req.x, req.y, method=req.method, alternative=req.alternative, alpha=req.alpha, sensitivity=req.sensitivity)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    return {"result": _json(res), "compact": _json(inf.compact_result(res))}
+
+
+class Tabla(BaseModel):
+    table: list[list[int]] = Field(..., min_length=2, max_length=MAX_TABLA)
+    alpha: float = Field(0.05, gt=0, lt=1)
+
+
+@app.post("/v1/stats/chi_cuadrado", dependencies=[Depends(_acceso("stats", lambda: RATE_STATS))])
+def stats_chi(req: Tabla) -> dict[str, Any]:
+    if any(len(f) != len(req.table[0]) or not 2 <= len(f) <= MAX_TABLA or any(not 0 <= v <= MAX_CONTEO for v in f) for f in req.table):
+        raise HTTPException(422, f"La tabla debe ser rectangular (2 a {MAX_TABLA} filas y columnas) con conteos entre 0 y {MAX_CONTEO}.")
+    inf = _motor().inference
+    try:
+        with _Calculo():
+            res = inf.chi_square_independence(req.table, alpha=req.alpha)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    return {"result": _json(res), "compact": _json(inf.compact_result(res))}
+
+
+class DosProporciones(BaseModel):
+    successes: list[int] = Field(..., min_length=2, max_length=2)
+    nobs: list[int] = Field(..., min_length=2, max_length=2)
+    alpha: float = Field(0.05, gt=0, lt=1)
+
+
+@app.post("/v1/stats/dos_proporciones", dependencies=[Depends(_acceso("stats", lambda: RATE_STATS))])
+def stats_dos_proporciones(req: DosProporciones) -> dict[str, Any]:
+    if any(not 0 <= v <= MAX_CONTEO for v in req.successes + req.nobs):
+        raise HTTPException(422, f"Los conteos deben estar entre 0 y {MAX_CONTEO}.")
+    inf = _motor().inference
+    try:
+        with _Calculo():
+            res = inf.two_proportions(req.successes, req.nobs, alpha=req.alpha)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    return {"result": _json(res), "compact": _json(inf.compact_result(res))}
+
+
+class CuentasBayes(BaseModel):
+    C_D: int = Field(..., ge=0, le=MAX_CONTEO)
+    C_ND: int = Field(..., ge=0, le=MAX_CONTEO)
+    NC_D: int = Field(..., ge=0, le=MAX_CONTEO)
+    NC_ND: int = Field(..., ge=0, le=MAX_CONTEO)
+    bug_threshold: int | float = 0      # se conserva el tipo recibido para que el texto del evento («bug > 0») sea igual al de Ada local
+    mccc_threshold: int | float = 10
+
+
+@app.post("/v1/stats/bayes", dependencies=[Depends(_acceso("stats", lambda: RATE_STATS))])
+def stats_bayes(req: CuentasBayes) -> dict[str, Any]:
+    """P(D|C) con Bayes y su verificación, a partir de la tabla 2×2. Se arma un conjunto con esos conteos y los eventos «bug > umbral» y «McCC > umbral»."""
+    import numpy as np
+    import pandas as pd
+
+    n = req.C_D + req.C_ND + req.NC_D + req.NC_ND
+    if n == 0 or n > MAX_CONTEO:
+        raise HTTPException(422, f"El total debe estar entre 1 y {MAX_CONTEO}.")
+    cuentas = [req.C_D, req.C_ND, req.NC_D, req.NC_ND]
+    es_d, es_c = [1, 0, 1, 0], [1, 1, 0, 0]
+    df = pd.DataFrame({
+        "bug": np.repeat([req.bug_threshold + 1 if d else req.bug_threshold for d in es_d], cuentas),
+        "McCC": np.repeat([req.mccc_threshold + 1 if c else req.mccc_threshold for c in es_c], cuentas),
+    })
+    prob = _motor().probability
+    A = {"column": "bug", "op": ">", "value": req.bug_threshold}
+    B = {"column": "McCC", "op": ">", "value": req.mccc_threshold}
+    try:
+        with _Calculo():
+            res = prob.run_probability("bayes", df=df, A=A, B=B)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    return {"result": None, "compact": _json(prob.compact_probability(res))}

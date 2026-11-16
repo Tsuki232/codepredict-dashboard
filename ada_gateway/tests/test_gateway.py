@@ -137,3 +137,11 @@ def test_un_valor_p_inventado_no_se_confunde_con_el_verdadero(cliente, monkeypat
 def test_el_pensamiento_del_modelo_no_se_filtra(cliente, monkeypatch):
     ollama_falso(monkeypatch, texto="<think>calculo secreto 999</think>Explicación final.")
     assert pedir(cliente).json()["texto"] == "Explicación final."
+
+
+def test_sin_clave_se_rechaza_antes_de_leer_el_cuerpo(cliente):
+    """Con clave mala el cuerpo ni se analiza (401), y con clave buena un cuerpo declarado de más de 16 MB da 413."""
+    r = cliente.post("/v1/stats/dos_grupos", content=b"{" * 1000, headers={"Content-Type": "application/json"})
+    assert r.status_code == 401
+    r = cliente.post("/v1/stats/dos_grupos", content=b"x", headers={"X-API-Key": CLAVE, "Content-Length": str(gateway.MAX_CUERPO + 1)})
+    assert r.status_code in (413, 400)   # el cliente de pruebas puede corregir el largo; lo esencial es que NO llegue a 200
