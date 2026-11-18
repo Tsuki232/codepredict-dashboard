@@ -21,3 +21,6 @@ data/work/
 ada_gateway/.env.gateway
 ada_gateway/.pids/
 ada_gateway/cloudflared.exe
+# Telemetría del panel «Ada en vivo» (códigos de compañeros y la sal con que se calculan) y sus registros: solo viven en este PC
+ada_gateway/telemetria/
+ada_gateway/panel.*.log

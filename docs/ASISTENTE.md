@@ -84,6 +84,28 @@ ocupado); como máximo 2 cálculos a la vez. Una clave inválida se rechaza **an
 - **El panel del péndulo** lo usa con `ADA_API_URL` (`https://…`) y `ADA_API_KEY` en su `.env`. Es una segunda opinión: sin Ada, con clave mala o con el PC apagado, el panel calcula igual.
 - La clave la guarda el **servidor** de cada panel; el navegador nunca la ve.
 
+## El panel «Ada en vivo» (ver qué hace Ada, en este PC)
+
+Un panel aparte, **solo para el PC que corre Ada**, que muestra con datos reales qué está haciendo en cada momento. Se abre con el acceso directo **Panel de ADA** del escritorio
+(o `scripts\panel_ada.cmd`) y queda en `http://127.0.0.1:8790`.
+
+- **El recorrido de una petición:** compañero → túnel → puerta de enlace → Ada → verificación por dos vías. Cada punto es una petición real y solo se mueve cuando una llega o termina; en reposo todo queda quieto.
+- **Qué hace Ada ahora**, con cronómetro; **lo último que verificó**, dibujado como dos trazos (el primer método continuo, el segundo punteado) que se juntan en un visto bueno o, si no coinciden, se separan con una ✕.
+- **Peticiones por minuto** y **cuánto tardó cada una**, **uso de la GPU, memoria de la GPU, temperatura, procesador y cupos**, y una **bitácora** con el detalle (por ejemplo, los pasos de una limpieza con sus filas antes y después).
+- Tiene tema claro y oscuro y la opción «Ver gráficas como tabla».
+
+**De dónde salen los datos.** La puerta de enlace anota cada petición en `ada_gateway/telemetria/eventos.jsonl` (ruta, estado, duración, un código corto del compañero y un resumen de lo que Ada calculó). El panel lee ese archivo y mide el PC
+(`nvidia-smi`, la API de Ollama y los procesos). Nada se inventa: si algo no se puede leer, el panel lo dice.
+
+**Privacidad.** No se guardan claves, direcciones de internet, datos de los archivos, nombres de archivos ni textos generados. A cada compañero se le asigna un código de 6 caracteres calculado con una sal que solo existe en este PC: sirve
+para distinguir a una persona de otra, no para saber quién es. La carpeta `telemetria/` está en `.gitignore` y no se sube.
+
+**Seguridad.** El panel solo escucha en `127.0.0.1`, no sale por el túnel, solo acepta `GET` y rechaza cualquier petición cuyo encabezado `Host` no sea este equipo (así una página web ajena no puede leerlo). No carga nada de internet.
+`Apagar ADA` también lo apaga.
+
+**Lo que no muestra.** Del modelo de lenguaje solo se mide lo que de verdad se puede medir: cuántos tokens leyó y escribió y cuánto tardó. Lo que pasa dentro de sus capas no se mide aquí, y por eso no se dibuja. Los pasos de una limpieza aparecen cuando la
+petición termina (Ada los entrega juntos), no mientras ocurren.
+
 ## Seguridad (por qué es seguro exponerlo, y qué no hacer)
 
 - Para el asistente de lenguaje, la puerta de enlace solo acepta `explicar` o `repaso` con un resultado en JSON; **no hay chat libre ni herramientas**. El resultado se trata como datos, dentro de `<resultado>…</resultado>`.

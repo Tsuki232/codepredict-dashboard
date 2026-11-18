@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ada en vivo</title>
+  <link rel="stylesheet" href="/static/estilo.css">
+</head>
+<body>
+  <header class="cabecera">
+    <div>
+      <h1>Ada en vivo</h1>
+      <p class="sub">Lo que Ada hace ahora mismo en este PC. Cada dato sale de la puerta de enlace y del sistema, no de una simulación.</p>
+    </div>
+    <div class="controles">
+      <span id="conexion" class="vivo espera" role="status" aria-live="polite"><i></i><span>Conectando…</span></span>
+      <label class="interruptor"><input type="checkbox" id="ver-tabla"> Ver gráficas como tabla</label>
+      <button id="tema" class="boton" type="button" aria-label="Cambiar entre tema claro y oscuro">Tema</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="piezas" class="piezas" aria-label="Estado de las piezas de Ada"></section>
+
+    <section class="hoja recorrido" aria-labelledby="t-recorrido">
+      <header>
+        <h2 id="t-recorrido">El recorrido de una petición</h2>
+        <p>Solo se mueve algo cuando llega o termina una petición real; en reposo todo queda quieto. Cada punto es una petición de verdad.</p>
+      </header>
+      <svg id="recorrido" viewBox="0 0 1200 270" role="img" aria-label="Recorrido de una petición: del compañero al túnel, a la puerta de enlace, a Ada y a la verificación por dos vías"></svg>
+      <p id="resumen" class="resumen"></p>
+    </section>
+
+    <div class="dos">
+      <section class="hoja" aria-labelledby="t-ahora">
+        <header><h2 id="t-ahora">Qué hace Ada ahora</h2></header>
+        <div id="ahora"></div>
+      </section>
+      <section class="hoja" aria-labelledby="t-verif">
+        <header>
+          <h2 id="t-verif">Lo último que Ada verificó por dos vías</h2>
+          <p>Ada calcula cada resultado con dos métodos independientes. El trazo continuo es el primero y el punteado, el segundo: solo se da por bueno si se juntan.</p>
+        </header>
+        <div id="verificado"></div>
+      </section>
+    </div>
+
+    <div class="dos">
+      <section class="hoja" aria-labelledby="t-minuto">
+        <header><h2 id="t-minuto">Peticiones por minuto</h2><p>Los últimos 30 minutos, por tipo de trabajo.</p></header>
+        <div class="grafica" id="g-minuto"></div>
+        <div class="tabla-vista" id="t-minuto-tabla"></div>
+        <div class="leyenda" id="l-minuto"></div>
+      </section>
+      <section class="hoja" aria-labelledby="t-tiempos">
+        <header><h2 id="t-tiempos">Cuánto tardó cada petición</h2><p>Cada punto es una petición; mientras más arriba, más tardó. La escala es logarítmica.</p></header>
+        <div class="grafica" id="g-tiempos"></div>
+        <div class="tabla-vista" id="t-tiempos-tabla"></div>
+        <div class="leyenda" id="l-tiempos"></div>
+      </section>
+    </div>
+
+    <div class="dos">
+      <section class="hoja" aria-labelledby="t-recursos">
+        <header><h2 id="t-recursos">Qué le pide Ada a este PC</h2><p>Lecturas reales de la tarjeta gráfica y del equipo, cada 2 segundos.</p></header>
+        <div id="recursos" class="medidas"></div>
+      </section>
+      <section class="hoja" aria-labelledby="t-cupos">
+        <header><h2 id="t-cupos">Cuánto se usó de cada cupo</h2><p>La puerta de enlace limita las peticiones por minuto para que nadie sature el PC.</p></header>
+        <div id="cupos" class="medidas"></div>
+      </section>
+    </div>
+
+    <section class="hoja" aria-labelledby="t-bitacora">
+      <header><h2 id="t-bitacora">Bitácora</h2><p>Lo último que pasó, en orden. Pulsa una fila para ver el detalle.</p></header>
+      <div class="filtros" id="filtros" role="group" aria-label="Filtrar la bitácora"></div>
+      <ol class="bitacora" id="bitacora"></ol>
+    </section>
+
+    <section class="hoja limites" aria-labelledby="t-limites">
+      <header><h2 id="t-limites">Qué muestra este panel y qué no</h2></header>
+      <ul>
+        <li>Muestra lo que ve la puerta de enlace: quién pidió qué, cuánto tardó, y si Ada verificó el resultado por dos vías. Los pasos de una limpieza aparecen cuando la petición termina.</li>
+        <li>No guarda ni muestra claves, direcciones de internet, datos de los archivos ni textos generados. A cada compañero solo se le asigna un código corto que no permite saber quién es.</li>
+        <li>Del modelo de lenguaje solo se ve lo que se puede medir de verdad: cuántos tokens leyó y escribió y cuánto tardó. Lo que pasa dentro de sus capas no se mide aquí, y por eso no se dibuja.</li>
+        <li>Este panel es solo para este PC: escucha en 127.0.0.1 y no sale por el túnel.</li>
+      </ul>
+    </section>
+  </main>
+
+  <div id="tip" role="tooltip" hidden></div>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

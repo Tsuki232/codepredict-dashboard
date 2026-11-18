@@ -2,7 +2,7 @@
 # Solo detiene los procesos cuyos PID guardó el script de arranque y que, además, siguen siendo del programa esperado.
 $root = Split-Path -Parent $PSScriptRoot
 $pids = Join-Path $root "ada_gateway\.pids"
-foreach ($par in @(@("tunnel", "cloudflared"), @("gateway", "python"))) {
+foreach ($par in @(@("tunnel", "cloudflared"), @("gateway", "python"), @("monitor", "python"))) {      # monitor = el panel «Ada en vivo» (si estaba encendido)
     $f = Join-Path $pids "$($par[0]).pid"
     if (-not (Test-Path $f)) { continue }
     $id = [int](Get-Content $f)

@@ -35,7 +35,7 @@ from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, Reques
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ValidationError
 
-from ada_gateway import motor
+from ada_gateway import motor, telemetria
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/v1").rstrip("/")
 MODEL = os.getenv("GATEWAY_MODEL", "ada-q")
@@ -167,17 +167,23 @@ async def explicar(req: Peticion, request: Request, x_api_key: str | None = Head
     except asyncio.TimeoutError:
         raise HTTPException(503, "Ada está ocupada con otra petición; inténtalo en un momento.") from None
     t0 = time.monotonic()
+    uso: dict[str, Any] = {}
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT_S) as c:
             r = await c.post(f"{OLLAMA_URL}/chat/completions", json={"model": MODEL, "messages": mensajes, "max_tokens": MAX_TOKENS, "temperature": 0.2, "stream": False})
         r.raise_for_status()
         texto = r.json()["choices"][0]["message"]["content"].strip()
+        uso = r.json().get("usage") or {}
     except (httpx.HTTPError, KeyError, IndexError, ValueError):
         raise HTTPException(502, "El modelo de lenguaje no respondió (¿Ollama apagado o cargando?).") from None
     finally:
         _sem.release()
     texto = re.sub(r"<think>.*?</think>", "", texto, flags=re.S).strip()   # un modelo con razonamiento no debe filtrar su «pensamiento»
-    return {"texto": texto, "modelo": MODEL, "segundos": round(time.monotonic() - t0, 2), "cifras_no_verificadas": cifras_no_verificadas(texto, req.resultado)}
+    faltan = cifras_no_verificadas(texto, req.resultado)
+    segundos = round(time.monotonic() - t0, 2)
+    telemetria.nota(tipo="explicar", modo=req.modo, modelo=MODEL, tokens_entrada=uso.get("prompt_tokens"), tokens_salida=uso.get("completion_tokens"),
+                    segundos=segundos, cifras_sin_verificar=len(faltan), caracteres=len(texto))
+    return {"texto": texto, "modelo": MODEL, "segundos": segundos, "cifras_no_verificadas": faltan}
 
 
 # ----------------------------------------------------------------------------- cálculo de Ada para cualquier panel (estadística y péndulo)
@@ -250,8 +256,41 @@ async def _antes_de_leer_el_cuerpo(request: Request, call_next):
     return await call_next(request)
 
 
+_CUBOS = {"/v1/explicar": "explicar", "/ada/pendulum/verify": "pendulo", "/v1/codepredict/limpio": "cp_limpio"}
+
+
+def _cubo_de(ruta: str) -> str:
+    return _CUBOS.get(ruta) or ("stats" if ruta.startswith("/v1/stats/") else "cp" if ruta.startswith("/v1/codepredict/") else "otro")
+
+
+@app.middleware("http")
+async def _telemetria(request: Request, call_next):
+    """Deja constancia REAL de cada petición para el panel «Ada en vivo» (solo metadatos; ver telemetria.py). Va por fuera de todo, así que también
+    registra las que se rechazan por clave o por tamaño. Los sondeos de estado no se registran."""
+    ruta = request.url.path
+    if ruta in ("/health", "/ada/health"):
+        return await call_next(request)
+    if not any(getattr(r, "path", None) == ruta for r in app.routes):
+        ruta = "(otra)"                                     # sondeos y escáneres: no se copia la ruta que pidieron
+    ip = request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "?")
+    peticion = {"id": os.urandom(3).hex(), "ruta": ruta, "cubo": _cubo_de(ruta), "metodo": request.method, "cliente": telemetria.cliente(ip),
+                "origen": "tunel" if (request.headers.get("cf-ray") or request.headers.get("cf-connecting-ip")) else "local"}
+    telemetria.registrar({"e": "inicio", **peticion, "bytes_in": int(request.headers.get("content-length") or 0)})
+    detalle: dict[str, Any] = {}
+    token = telemetria.abrir(detalle)
+    t0, estado, salida = time.perf_counter(), 500, 0
+    try:
+        resp = await call_next(request)
+        estado, salida = resp.status_code, int(resp.headers.get("content-length") or 0)
+        return resp
+    finally:
+        telemetria.cerrar(token)
+        telemetria.registrar({"e": "fin", **peticion, "estado": estado, "ms": round((time.perf_counter() - t0) * 1000), "bytes_out": salida, "d": detalle})
+
+
 @app.on_event("startup")
 def _arrancar_motor() -> None:
+    telemetria.registrar({"e": "arranque", "pid": os.getpid()})
     motor.iniciar()     # carga Ada en segundo plano (tarda); mientras tanto las rutas de cálculo responden 503
 
 
@@ -269,7 +308,10 @@ def pendulo_verificar(
     """Mismo contrato que el servicio local del péndulo de Ada (`/ada/pendulum/verify`), para que el panel del péndulo solo cambie de dirección."""
     ada = _motor()
     with _Calculo():
-        return _json(ada.pendulo.verify(theta0_deg=theta0_deg, L=L, g=g, tolerance_pct=tolerance_pct, n_cycles=n_cycles))
+        out = _json(ada.pendulo.verify(theta0_deg=theta0_deg, L=L, g=g, tolerance_pct=tolerance_pct, n_cycles=n_cycles))
+    telemetria.nota(tipo="pendulo", theta0=theta0_deg, L=L, g=g, T=out.get("exact_period_elliptic_s"), T0=out.get("linear_period_T0_s"), error_pct=out.get("period_error_pct"),
+                    verificado=out.get("verified"), vias=out.get("verification_methods"), discrepancia=out.get("dual_period_relative_discrepancy"))
+    return out
 
 
 class DosGrupos(BaseModel):
@@ -292,7 +334,9 @@ def stats_dos_grupos(req: DosGrupos) -> dict[str, Any]:
             res = inf.compare_two_groups(req.x, req.y, method=req.method, alternative=req.alternative, alpha=req.alpha, sensitivity=req.sensitivity)
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
-    return {"result": _json(res), "compact": _json(inf.compact_result(res))}
+    compacto = _json(inf.compact_result(res))
+    telemetria.resumen_prueba("dos_grupos", compacto, res, metodo=req.method)
+    return {"result": _json(res), "compact": compacto}
 
 
 class Tabla(BaseModel):
@@ -310,7 +354,9 @@ def stats_chi(req: Tabla) -> dict[str, Any]:
             res = inf.chi_square_independence(req.table, alpha=req.alpha)
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
-    return {"result": _json(res), "compact": _json(inf.compact_result(res))}
+    compacto = _json(inf.compact_result(res))
+    telemetria.resumen_prueba("chi_cuadrado", compacto, res)
+    return {"result": _json(res), "compact": compacto}
 
 
 class DosProporciones(BaseModel):
@@ -329,7 +375,9 @@ def stats_dos_proporciones(req: DosProporciones) -> dict[str, Any]:
             res = inf.two_proportions(req.successes, req.nobs, alpha=req.alpha)
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
-    return {"result": _json(res), "compact": _json(inf.compact_result(res))}
+    compacto = _json(inf.compact_result(res))
+    telemetria.resumen_prueba("dos_proporciones", compacto, res)
+    return {"result": _json(res), "compact": compacto}
 
 
 class CuentasBayes(BaseModel):
@@ -364,7 +412,9 @@ def stats_bayes(req: CuentasBayes) -> dict[str, Any]:
             res = prob.run_probability("bayes", df=df, A=A, B=B)
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
-    return {"result": None, "compact": _json(prob.compact_probability(res))}
+    compacto = _json(prob.compact_probability(res))
+    telemetria.resumen_prueba("bayes", compacto, res)
+    return {"result": None, "compact": compacto}
 
 
 # ----------------------------------------------------------------------------- el proceso COMPLETO de CodePredict hecho por Ada
@@ -411,6 +461,7 @@ def cp_perfil() -> dict[str, Any]:
     cp = _cp()
     out = _ejecutar(cp, cp.proceso.perfil)
     out["source"]["path"] = os.path.basename(str(out["source"]["path"]))     # no se revela la estructura de carpetas de este equipo
+    telemetria.nota(tipo="perfil", filas=out.get("rows"), bytes=out["source"].get("bytes"))
     return _json(out)
 
 
@@ -418,7 +469,9 @@ def cp_perfil() -> dict[str, Any]:
 def cp_limpieza(cuerpo: dict[str, Any] = Body(...)) -> dict[str, Any]:
     cp = _cp()
     reglas = _reglas(cp, cuerpo)
-    return _json(_ejecutar(cp, lambda: cp.proceso.vista(reglas)))
+    vista = _json(_ejecutar(cp, lambda: cp.proceso.vista(reglas)))
+    telemetria.nota(tipo="limpieza", filas_in=vista.get("rows_in"), filas_out=vista.get("rows_out"), verificado=vista.get("verified"), pasos=telemetria.pasos(vista.get("steps", [])))
+    return vista
 
 
 class InferenciaCP(BaseModel):
@@ -434,6 +487,10 @@ def cp_inferencia(req: InferenciaCP) -> dict[str, Any]:
     out = _ejecutar(cp, lambda: cp.inference.run_live(reglas, req.alpha, req.alternative))
     out = _json(out)
     out["meta"].pop("ada", None)      # el panel pone el suyo; aquí iría la ruta de carpetas de este equipo
+    pruebas = [{"nombre": n, "estadistico": out[k].get("statistic"), "p": out[k].get("p_value"), "verificado": out[k].get("verified")}
+               for n, k in (("Welch", "welch"), ("Welch sobre log", "welch_log"), ("χ²", "chi_square"), ("Dos proporciones", "two_proportions"))]
+    pruebas.append({"nombre": "Bayes", "estadistico": out["bayes"].get("posterior"), "p": None, "verificado": out["bayes"].get("verified")})
+    telemetria.nota(tipo="inferencia", alpha=req.alpha, filas=out["meta"].get("rows"), pruebas=pruebas, verificado=all(p["verificado"] for p in pruebas))
     return out
 
 
@@ -443,5 +500,6 @@ def cp_limpio(cuerpo: dict[str, Any] = Body(...)) -> dict[str, Any]:
     cp = _cp()
     reglas = _reglas(cp, cuerpo)
     info, csv = _ejecutar(cp, lambda: cp.proceso.conjunto_limpio(reglas))
+    telemetria.nota(tipo="limpio", filas=info["output"]["rows"], bytes_csv=len(csv), pasos=telemetria.pasos(info["steps"]), verificado=True)
     return {"info": _json(info), "csv_gzip_base64": base64.b64encode(gzip.compress(csv, 3)).decode("ascii"), "csv_bytes": len(csv),
             "csv_sha256": hashlib.sha256(csv).hexdigest()}
