@@ -50,7 +50,8 @@ def puerta(datos):
     d, csv = datos
     puerto = _puerto_libre()
     env = {**os.environ, "GATEWAY_API_KEY": CLAVE, "CODEPREDICT_DATASET": str(csv), "CODEPREDICT_WORK": str(d / "work-puerta"),
-           "ADA_ROOT": str(config.ada_root()), "PYTHONIOENCODING": "utf-8"}
+           "ADA_ROOT": str(config.ada_root()), "PYTHONIOENCODING": "utf-8",
+           "GATEWAY_TELEMETRIA_DIR": str(d / "telemetria-puerta")}          # la puerta de prueba NO escribe en la telemetría real de este PC (la que ve el panel «Ada en vivo»)
     for k in ("ADA_REMOTE_URL", "ADA_REMOTE_KEY", "ADA_ENGINE"):
         env.pop(k, None)
     log = open(d / "puerta.log", "w", encoding="utf-8")
