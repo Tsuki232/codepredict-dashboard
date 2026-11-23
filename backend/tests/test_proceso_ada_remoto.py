@@ -121,7 +121,7 @@ def _json(o):
 # ----------------------------------------------------------------------------- lo que Ada hace en otro equipo == lo que se hace en local
 
 
-def test_perfil_vista_previa_e_inferencia_hechos_por_ada_remota_son_iguales_a_los_locales(monkeypatch, datos, puerta):
+def test_perfil_y_vista_previa_hechos_por_ada_remota_son_iguales_a_los_locales_y_la_estadistica_es_local(monkeypatch, datos, puerta):
     c = _remoto(monkeypatch, datos, puerta)
     assert c.get("/api/health").json()["ada"]["mode"] == "remote" and ada_engine.process_remote() is True
     perfil_r, vista_r = c.get("/api/dataset/profile").json(), c.post("/api/clean/preview", json={}).json()
@@ -141,7 +141,7 @@ def test_perfil_vista_previa_e_inferencia_hechos_por_ada_remota_son_iguales_a_lo
     assert vista_r["verified"] is True and vista_r["rows_in"] == vista_r["rows_out"] == 100
     for k in ("groups", "table2x2", "probabilities", "welch", "welch_log", "robust", "chi_square", "two_proportions", "bayes", "independence", "hist"):
         assert _json(vivo_r[k]) == _json(vivo_l[k]), f"inferencia.{k}"
-    assert vivo_r["meta"]["ada"]["mode"] == "remote" and vivo_r["meta"]["ada"]["root"] is None and "otro equipo" in vivo_r["meta"]["source"]
+    assert vivo_r["meta"]["ada"]["mode"] == "python" and "otro equipo" not in vivo_r["meta"]["source"], "la estadística es local: Ada solo limpia"
     assert vivo_r["bayes"]["posterior"] == pytest.approx(0.6) and vivo_r["chi_square"]["statistic"] == pytest.approx(50 / 3, abs=1e-4)
 
 
@@ -178,11 +178,11 @@ def test_si_el_csv_de_ada_no_es_el_de_este_equipo_no_se_guarda_nada(monkeypatch,
     assert not (d / "work-distinto" / "unified_file_limpio.csv").exists()
 
 
-def test_la_inferencia_guardada_tambien_la_calcula_ada_remota(monkeypatch, datos, puerta):
+def test_la_inferencia_guardada_la_calcula_python_local_aunque_la_limpieza_la_hizo_ada(monkeypatch, datos, puerta):
     c = _remoto(monkeypatch, datos, puerta, "work-saved-remoto")
     c.post("/api/clean/apply", json={})
     d = c.post("/api/inference", json={}).json()
-    assert d["meta"]["source"] == "guardado" and d["meta"]["ada"]["mode"] == "remote"
+    assert d["meta"]["source"] == "guardado" and d["meta"]["ada"]["mode"] == "python"
     assert d["bayes"]["posterior"] == pytest.approx(0.6) and d["welch"]["verified"] is True
 
 
@@ -192,7 +192,8 @@ def test_la_inferencia_guardada_tambien_la_calcula_ada_remota(monkeypatch, datos
 def test_ada_apagada_o_con_clave_mala_abre_el_modal_y_no_se_filtra_la_clave(monkeypatch, datos, puerta):
     d, csv = datos
     c = _motor(monkeypatch, d / "work-caida", csv, ADA_ENGINE="remote", ADA_REMOTE_URL="http://127.0.0.1:1", ADA_REMOTE_KEY=CLAVE)
-    for ruta, cuerpo in (("/api/clean/preview", {}), ("/api/inference/live", {}), ("/api/clean/apply", {})):
+    assert c.post("/api/inference/live", json={}).status_code == 200, "la estadística no depende de Ada: sigue aunque Ada esté apagada"
+    for ruta, cuerpo in (("/api/clean/preview", {}), ("/api/clean/apply", {})):
         r = c.post(ruta, json=cuerpo)
         assert r.status_code == 503 and r.json()["code"] == "ada_no_disponible" and "apagado" in r.json()["detail"] and CLAVE not in r.text, ruta
     assert c.get("/api/dataset/profile").status_code == 503
@@ -202,20 +203,17 @@ def test_ada_apagada_o_con_clave_mala_abre_el_modal_y_no_se_filtra_la_clave(monk
     assert r.status_code == 503 and r.json()["code"] == "ada_no_disponible" and "rechazó la clave" in r.json()["detail"] and "clave-equivocada" not in r.text
 
 
-def test_con_ada_caida_la_persona_elige_python_y_las_cifras_coinciden_con_las_de_ada(monkeypatch, datos, puerta):
+def test_con_ada_caida_la_estadistica_da_lo_mismo_y_la_persona_puede_elegir_python_para_limpiar(monkeypatch, datos, puerta):
     d, csv = datos
     c = _remoto(monkeypatch, datos, puerta, "work-ref")
-    ref = c.post("/api/inference/live", json={}).json()                         # lo que calculó Ada
+    ref = c.post("/api/inference/live", json={}).json()                         # con Ada encendida
 
     c = _motor(monkeypatch, d / "work-py", csv, ADA_ENGINE="remote", ADA_REMOTE_URL="http://127.0.0.1:1", ADA_REMOTE_KEY=CLAVE)
-    assert c.post("/api/inference/live", json={}).json()["code"] == "ada_no_disponible"
+    sin_ada = c.post("/api/inference/live", json={})
+    assert sin_ada.status_code == 200, "la estadística no depende de Ada"
+    assert c.post("/api/clean/preview", json={}).json()["code"] == "ada_no_disponible", "lo que sí depende de Ada (la limpieza) abre el modal"
+    for k in ("welch", "welch_log", "chi_square", "two_proportions", "bayes", "table2x2"):
+        assert sin_ada.json()[k] == ref[k], f"{k}: con y sin Ada sale exactamente lo mismo"
     assert c.post("/api/engine", json={"motor": "python"}).json()["ada"]["mode"] == "python"
     assert ada_engine.process_remote() is False, "con Python elegido ya no se le pide nada a Ada"
-    py = c.post("/api/inference/live", json={}).json()
-    assert py["meta"]["ada"]["mode"] == "python" and py["meta"]["rows"] == ref["meta"]["rows"] == 100
-    for k in ("welch", "welch_log", "chi_square", "two_proportions"):
-        for campo in ("statistic", "df", "p_value"):
-            a, b = ref[k][campo], py[k][campo]
-            assert (a is None and b is None) or b == pytest.approx(a, rel=1e-9, abs=1e-12), f"{k}.{campo}"
-    assert py["bayes"]["posterior"] == ref["bayes"]["posterior"] and py["table2x2"] == ref["table2x2"]
     assert c.post("/api/clean/preview", json={}).status_code == 200 and c.post("/api/clean/apply", json={}).json()["engine"] == "python-local"

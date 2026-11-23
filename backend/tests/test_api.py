@@ -78,10 +78,13 @@ def test_inferencia_sin_limpieza_pide_limpiar_primero(client):
     assert r.status_code == 409 and "limpieza" in r.json()["detail"].lower()
 
 
-def test_inferencia_sin_ada_responde_503(client):
+def test_la_inferencia_ya_no_necesita_ada(client):
+    """Ada solo limpia: la estadística es Python local (sin Ada ni ninguna IA), así que funciona aunque Ada no esté."""
     client.post("/api/clean/apply", json={})
     r = client.post("/api/inference", json={})
-    assert r.status_code == 503
+    assert r.status_code in (200, 422), r.text            # 422 solo si la muestra mínima de prueba no alcanza para los dos grupos; nunca 503 por Ada
+    if r.status_code == 200:
+        assert r.json()["meta"]["ada"]["mode"] == "python" and "sin Ada" in r.json()["meta"]["ada"]["note"]
 
 
 def test_reglas_invalidas_se_rechazan(client):

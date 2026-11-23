@@ -1,13 +1,14 @@
-"""Inferencia sobre el conjunto limpio GUARDADO, calculada por Ada (cada prueba con doble verificación independiente).
+"""Inferencia del informe en vivo, calculada en este equipo con Python (módulo `pystats`: NumPy + SciPy, cada prueba con doble verificación). SIN Ada.
+
+Ada (la IA) solo interviene en el perfil y la limpieza de los datos; la estadística es código propio, corto y verificable.
 
 Hipótesis de trabajo (la decide el grupo; aquí solo se calculan):
   · Welch:    media de McCC en archivos defectuosos (bug > 0) frente a no defectuosos.
   · χ² y z de dos proporciones: relación entre «compleja» (McCC > 10) y «defectuoso» en la tabla 2×2.
   · Bayes:    P(defectuoso | compleja) a partir de los conteos de ESTA muestra.
 
-Ada recibe aquí todas las filas. Su análisis de sensibilidad automático (bootstrap n₁×n₂, 20 000 permutaciones) no escala a decenas de
-miles de filas, así que se desactiva (`sensitivity=False`) y la comprobación robusta la hace este módulo con métodos de rangos O(n log n),
-etiquetada como tal: NO la hace Ada.
+La comprobación robusta (Mann-Whitney por rangos, O(n log n)) la hace este módulo y está etiquetada como tal.
+La vista «Inferencia» del panel usa `analisis_t` y `tstudent` (solo t de Student); esto alimenta el informe en vivo.
 """
 from __future__ import annotations
 
@@ -20,7 +21,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from app.core import ada_engine, cleaning, config, workspace
+from app.core import cleaning, config, pystats, workspace
 
 N_BOOT_ROBUST = 1000
 SEED = 42
@@ -98,8 +99,8 @@ def _cached(sha: str, alpha: float, alternative: str) -> dict[str, Any]:
 
 def _compute(frame: pd.DataFrame, rules: dict[str, Any], alpha: float, alternative: str, meta_extra: dict[str, Any]) -> dict[str, Any]:
     """Toda la inferencia sobre un DataFrame ya etiquetado (`defectuoso`, `compleja`). Sirve igual para el conjunto guardado y para la vista en vivo."""
-    ada = ada_engine.require()
-    inf, prob = ada.inference, ada.probability
+    motor = pystats.construir()      # estadística local, sin Ada
+    inf, prob = motor.inference, motor.probability
     x = frame.loc[frame["defectuoso"] == 1, "McCC"].to_numpy(float)
     y = frame.loc[frame["defectuoso"] == 0, "McCC"].to_numpy(float)
     if x.size < 2 or y.size < 2:
@@ -123,7 +124,7 @@ def _compute(frame: pd.DataFrame, rules: dict[str, Any], alpha: float, alternati
     repeated = int(frame.duplicated(subset=["LongName"], keep="first").sum())
     hist = cleaning.log_hist({"defectuosos": x, "sin_defecto": y})
     out = {
-        "meta": {"alpha": alpha, "alternative": alternative, "rows": n, "rules": rules, "ada": ada_engine.status(), **meta_extra},
+        "meta": {"alpha": alpha, "alternative": alternative, "rows": n, "rules": rules, "ada": pystats.estado(), **meta_extra},
         "groups": {"defectuosos": _group_stats(x), "sin_defecto": _group_stats(y)},
         "table2x2": tab,
         "probabilities": {"p_d": n_d / n, "p_c": n_c / n, "p_d_given_c": p_d_c, "p_d_given_nc": p_d_nc, "p_c_given_d": tab["C_D"] / n_d,
@@ -170,10 +171,6 @@ def run_live(rules: cleaning.Rules, alpha: float = 0.05, alternative: str = "two
         raise ValueError("alternative debe ser two-sided, greater o less")
     if not 0 < alpha < 1:
         raise ValueError("alpha debe estar en (0, 1)")
-    if ada_engine.process_remote():     # Ada hace la limpieza y la inferencia completas en su equipo; aquí solo se muestran
-        from app.core import ada_proceso
-
-        return ada_proceso.inferencia(rules, alpha, alternative)
     p = config.dataset_path()
     # La clave incluye la huella rápida del archivo (tamaño y fecha) para no usar resultados de otro CSV.
     return _live_cached(rules.model_dump_json(), f"{p}:{p.stat().st_size}:{p.stat().st_mtime_ns}", float(alpha), alternative)

@@ -75,7 +75,9 @@ def test_regla_desactivada_no_cambia_nada(client):
     assert run(client, "duplicados").json()["blocks"][0]["step"]["before"] == 10
 
 
-def test_celdas_de_ada_responden_503_si_ada_no_esta(client):
+def test_las_celdas_de_inferencia_ya_no_necesitan_ada(client):
+    """Ada solo limpia: las celdas de estadística se ejecutan con Python local, sin Ada (nunca 503 por Ada)."""
     for cell in ("cargar", "integridad", "duplicados", "rutas", "constantes", "atipicos", "etiquetas", "tabla", "guardar"):
         assert run(client, cell).status_code == 200
-    assert run(client, "welch").status_code == 503
+    assert run(client, "welch").status_code != 503
+    assert all(not c["needs_ada"] for c in client.get("/api/notebook/cells").json()["cells"])

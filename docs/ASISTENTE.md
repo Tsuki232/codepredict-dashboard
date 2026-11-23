@@ -1,7 +1,8 @@
 # Asistente Ada (modelo de lenguaje) por un túnel
 
-El panel puede pedirle a **Ada con modelo de lenguaje** (Ollama, en la GPU de un equipo del grupo) que *explique* un resultado en palabras sencillas
-o que escriba preguntas de repaso. Es opcional: si no está configurado o el equipo está apagado, el panel funciona igual.
+La puerta de enlace de Ada puede pedirle a **Ada con modelo de lenguaje** (Ollama, en la GPU de un equipo del grupo) que *explique* un resultado en palabras sencillas
+o que escriba preguntas de repaso. **El panel de CodePredict ya no usa esta función** (la vista *Inferencia* es solo t de Student, calculada con Python y sin IA); queda para otros proyectos.
+Es opcional: si no está configurado o el equipo está apagado, el panel funciona igual.
 
 **Lo que NO hace:** no calcula nada (las cifras las da el motor estadístico), no escribe la discusión del grupo y no tiene acceso a archivos, código ni herramientas.
 Todo texto que genere es de una IA: si se usa en el informe, hay que declararlo.
@@ -50,7 +51,8 @@ ADA_REMOTE_URL=https://xxxx.trycloudflare.com
 ADA_REMOTE_KEY=la-clave-que-les-pasaron
 ```
 
-Reinician el panel y, en la vista **Inferencia**, aparece el panel «Asistente Ada».
+Reinician el panel. Ahora esa clave solo le sirve al panel para pedirle a Ada el **perfil y la limpieza** de la base de datos. El panel **ya no muestra el asistente de lenguaje**
+(se quitó de la vista *Inferencia* para que la estadística —la t de Student— se calcule en el propio equipo con Python, sin ninguna IA); la ruta `/v1/explicar` de la puerta de enlace queda disponible para otros usos.
 
 ## La API de Ada para los cálculos (CodePredict y el péndulo)
 

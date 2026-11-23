@@ -156,7 +156,7 @@ export function CuadernoView() {
           <button type="button" className="chip" disabled={anyBusy || runAllBusy} style={{ height: 40, paddingInline: 18 }} onClick={() => void reset()}>
             <RotateCcw size={15} aria-hidden className="mr-2" /> Reiniciar (todo en blanco)
           </button>
-          <span className="small">{!ada ? '' : ada.ready ? `${engineName(ada)} lista para las celdas de inferencia.` : ada.phase === 'error' ? `Ada no disponible: ${ada.error}` : 'Ada se está cargando (las celdas de inferencia esperan).'}</span>
+          <span className="small">{!ada ? '' : ada.ready ? `Limpieza con ${engineName(ada)}; la estadística siempre se calcula aquí con Python, sin Ada.` : ada.phase === 'error' ? `Ada no disponible (${ada.error}): la limpieza necesita Ada o el motor Python local; la estadística no usa Ada.` : 'Ada se está cargando para la limpieza; la estadística no la necesita.'}</span>
         </div>
         <p className="small mt-3">
           Reglas activas (se eligen en «Limpieza visual»): {rules.integrity ? 'integridad' : 'sin integridad'} · {rules.drop_exact_duplicates ? 'quitar duplicados' : 'conservar duplicados'} · {POLICY[rules.path_policy]} · {POLICY[rules.outlier_policy]} · α = {String(alpha).replace('.', ',')}

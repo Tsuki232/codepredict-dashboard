@@ -1,62 +1,15 @@
-"""API de CodePredict Dashboard: perfil, limpieza (vista previa y aplicar) e inferencia con Ada."""
+"""API de CodePredict Dashboard: perfil y limpieza (con Ada) e inferencia con la t de Student (en este equipo, con Python, sin Ada)."""
 from __future__ import annotations
 
 from typing import Any, Literal
 
-import httpx
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from app.core import ada_engine, ada_proceso, cleaning, config, inference, notebook, proceso, workspace
+from app.core import ada_engine, ada_proceso, analisis_t, cleaning, config, inference, notebook, proceso, tstudent, workspace
 
 router = APIRouter(prefix="/api")
-
-
-# ----------------------------------------------------------------------------- asistente (Ada con modelo de lenguaje, por un túnel)
-
-
-def _remoto() -> tuple[str, str] | None:
-    """URL y clave de la API de Ada (la misma para el asistente y para el cálculo remoto): SOLO de variables de entorno."""
-    return ada_engine.remote_config()
-
-
-@router.get("/assistant/status")
-async def assistant_status() -> dict[str, Any]:
-    r = _remoto()
-    if r is None:
-        return {"configured": False, "reachable": False, "detail": "No está configurado (ADA_REMOTE_URL y ADA_REMOTE_KEY en el archivo .env)."}
-    try:
-        async with httpx.AsyncClient(timeout=4) as c:
-            ok = (await c.get(f"{r[0]}/health")).status_code == 200
-    except httpx.HTTPError:
-        ok = False
-    return {"configured": True, "reachable": ok, "detail": "Listo." if ok else "No responde: el PC que corre Ada puede estar apagado."}
-
-
-class AssistantRequest(BaseModel):
-    modo: Literal["explicar", "repaso"] = "explicar"
-    resultado: dict[str, Any]
-
-
-@router.post("/assistant/explain")
-async def assistant_explain(req: AssistantRequest) -> dict[str, Any]:
-    """Reenvía un resultado ya calculado a la puerta de enlace de Ada y devuelve su explicación. La clave no sale del servidor."""
-    r = _remoto()
-    if r is None:
-        raise HTTPException(503, "El asistente no está configurado en este equipo (faltan ADA_REMOTE_URL y ADA_REMOTE_KEY en .env).")
-    try:
-        async with httpx.AsyncClient(timeout=200) as c:
-            resp = await c.post(f"{r[0]}/v1/explicar", json=req.model_dump(), headers={"X-API-Key": r[1]})
-    except httpx.HTTPError:
-        raise HTTPException(503, "El asistente no responde: el PC que corre Ada puede estar apagado o sin túnel.") from None
-    if resp.status_code == 401:
-        raise HTTPException(502, "El asistente rechazó la clave: revisa ADA_REMOTE_KEY.")
-    if resp.status_code != 200:
-        detalle = resp.json().get("detail", "error") if resp.headers.get("content-type", "").startswith("application/json") else "error"
-        raise HTTPException(resp.status_code if resp.status_code in (413, 429, 503) else 502, f"El asistente respondió: {detalle}")
-    d = resp.json()
-    return {k: d.get(k) for k in ("texto", "modelo", "segundos", "cifras_no_verificadas")}
 
 
 # ----------------------------------------------------------------------------- cuaderno (celda por celda)
@@ -196,6 +149,66 @@ def run_inference(req: InferenceRequest) -> dict:
         raise HTTPException(409, str(e)) from e
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
+
+
+# ----------------------------------------------------------------------------- t de Student (sin Ada ni ninguna IA: código propio y corto)
+
+
+def _t(fn, *args):
+    try:
+        return fn(*args)
+    except FileNotFoundError as e:
+        raise HTTPException(409, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+@router.get("/tstudent")
+def tstudent_welch(alpha: float = 0.05, alternativa: Literal["two-sided", "greater", "less"] = "two-sided") -> dict:
+    """La t de Welch paso a paso sobre el conjunto limpio y guardado, con la comprobación contra SciPy."""
+    return _t(analisis_t.welch, alpha, alternativa)
+
+
+@router.get("/tstudent/permutacion")
+def tstudent_permutacion(repeticiones: int = 2000, semilla: int = tstudent.SEMILLA) -> dict:
+    """Comprobación sin fórmulas: baraja las etiquetas con bug / sin bug y mira cuántas veces sale una t tan grande."""
+    return _t(analisis_t.permutacion, repeticiones, semilla)
+
+
+@router.get("/tstudent/neurona")
+def tstudent_neurona() -> dict:
+    """Una sola neurona (regresión logística) que estima la probabilidad de bug según la complejidad, comprobada por dos vías."""
+    return _t(analisis_t.neurona)
+
+
+# ----------------------------------------------------------------------------- t de Student (sin Ada ni ninguna IA: código propio y corto)
+
+
+def _t(fn, *args):
+    try:
+        return fn(*args)
+    except FileNotFoundError as e:
+        raise HTTPException(409, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+@router.get("/tstudent")
+def tstudent_welch(alpha: float = 0.05, alternativa: Literal["two-sided", "greater", "less"] = "two-sided") -> dict:
+    """La t de Welch paso a paso sobre el conjunto limpio y guardado, con la comprobación contra SciPy."""
+    return _t(analisis_t.welch, alpha, alternativa)
+
+
+@router.get("/tstudent/permutacion")
+def tstudent_permutacion(repeticiones: int = 2000, semilla: int = tstudent.SEMILLA) -> dict:
+    """Comprobación sin fórmulas: baraja las etiquetas con bug / sin bug y mira cuántas veces sale una t tan grande."""
+    return _t(analisis_t.permutacion, repeticiones, semilla)
+
+
+@router.get("/tstudent/neurona")
+def tstudent_neurona() -> dict:
+    """Una sola neurona (regresión logística) que estima la probabilidad de bug según la complejidad, comprobada por dos vías."""
+    return _t(analisis_t.neurona)
 
 
 class LiveRequest(BaseModel):

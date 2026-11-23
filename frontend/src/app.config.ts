@@ -29,7 +29,7 @@ export const NAV: NavGroup[] = [
   {
     group: 'Análisis',
     items: [
-      { id: 'inferencia', label: 'Inferencia', short: 'Inferencia', title: 'Inferencia estadística con Ada', icon: FlaskConical },
+      { id: 'inferencia', label: 'Inferencia', short: 'Inferencia', title: 'Inferencia con la t de Student', icon: FlaskConical },
       { id: 'informe', label: 'Informe en vivo', short: 'Informe', title: 'Informe en vivo y PDF', icon: FileText },
     ],
   },

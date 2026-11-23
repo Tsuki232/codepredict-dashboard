@@ -8,6 +8,7 @@ import math
 
 import pandas as pd
 import pytest
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from scipy import stats
 
@@ -47,19 +48,28 @@ def _esperar_a_ada(c: TestClient) -> None:
         time.sleep(0.05)
 
 
-def test_sin_ada_la_inferencia_responde_503_con_el_codigo_que_abre_el_modal(cliente):
+def test_sin_ada_la_limpieza_avisa_con_el_codigo_que_abre_el_modal_pero_la_estadistica_sigue(cliente):
     _esperar_a_ada(cliente)
-    r = cliente.post("/api/inference/live", json={})
-    assert r.status_code == 503 and r.json()["code"] == "ada_no_disponible" and "ADA_REMOTE_URL" in r.json()["detail"]
     for r in (cliente.get("/api/dataset/profile"), cliente.post("/api/clean/preview", json={}), cliente.post("/api/clean/apply", json={})):
-        assert r.status_code == 503 and r.json()["code"] == "ada_no_disponible", "el proceso es de Ada: sin Ada avisa desde el principio, no sigue por la libre"
+        assert r.status_code == 503 and r.json()["code"] == "ada_no_disponible" and "ADA_REMOTE_URL" in r.json()["detail"], \
+            "el perfil y la limpieza son de Ada: sin Ada avisa desde el principio, no sigue por la libre"
+    live = cliente.post("/api/inference/live", json={})
+    assert live.status_code == 200 and live.json()["meta"]["ada"]["mode"] == "python", "la estadística NO depende de Ada"
     cliente.post("/api/engine", json={"motor": "python"})
     assert cliente.get("/api/dataset/profile").status_code == 200 and cliente.post("/api/clean/preview", json={}).status_code == 200, "con Python elegido funciona todo"
 
 
-def test_mientras_ada_carga_el_503_es_cargando_y_no_abre_el_modal(cliente, monkeypatch):
-    monkeypatch.setattr(ada_engine, "_state", {"phase": "loading", "error": None, "seconds": None, "mode": None, "note": None})
-    r = cliente.post("/api/inference/live", json={})
+def test_si_ada_solo_se_esta_cargando_el_503_es_cargando_y_no_abre_el_modal():
+    """El manejador de errores distingue «cargando» (espera) de «no disponible» (abre el modal)."""
+    def cargando():
+        raise ada_engine.AdaNotReady("Ada todavía se está cargando")
+
+    ruta = APIRoute("/api/__prueba_cargando", cargando, methods=["GET"])
+    app.router.routes.insert(0, ruta)                    # antes de la ruta general que sirve la página
+    try:
+        r = TestClient(app).get("/api/__prueba_cargando")
+    finally:
+        app.router.routes.remove(ruta)
     assert r.status_code == 503 and r.json()["code"] == "ada_cargando"
 
 
@@ -93,12 +103,12 @@ def test_en_python_se_puede_guardar_la_limpieza_y_la_inferencia_guardada_funcion
 
 def test_volver_a_ada_se_puede_y_descarta_los_resultados_del_otro_motor(cliente):
     cliente.post("/api/engine", json={"motor": "python"})
-    assert cliente.post("/api/inference/live", json={}).status_code == 200
+    assert cliente.post("/api/clean/preview", json={}).status_code == 200
     r = cliente.post("/api/engine", json={"motor": "ada"})
     assert r.json()["motor"] == "ada"
     _esperar_a_ada(cliente)                    # en uso real el servidor ya cargó Ada al arrancar; TestClient no ejecuta ese arranque
-    again = cliente.post("/api/inference/live", json={})
-    assert again.status_code == 503 and again.json()["code"] == "ada_no_disponible", "no se queda con cifras de Python guardadas en memoria"
+    again = cliente.post("/api/clean/preview", json={})
+    assert again.status_code == 503 and again.json()["code"] == "ada_no_disponible", "no se queda con la limpieza hecha por Python"
     assert cliente.get("/api/engine").json()["motor"] == "ada"
 
 

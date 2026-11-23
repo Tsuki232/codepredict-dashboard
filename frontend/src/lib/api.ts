@@ -1,5 +1,6 @@
 import type { Health, InferenceResult, Manifest, NbCell, NbResult, Preview, Profile, Rules } from '../state/types'
 import { announceAdaDown, isAdaDownCode } from './engine'
+import type { Alternativa, TNeurona, TPermutacion, TWelch } from '../features/tstudent/tipos'
 
 /** Motor elegido (Ada o Python local) y estado de Ada, tal como lo informa el servidor del panel. */
 export interface EngineInfo { motor: 'ada' | 'python'; proceso_en_ada_remota: boolean; ada: Health['ada'] }
@@ -49,18 +50,16 @@ export const api = {
   preview: (rules: Rules) => post<Preview>('/api/clean/preview', rules),
   status: () => call<{ applied: boolean; manifest: Manifest | null }>('/api/clean/status', undefined, 8000),
   apply: (rules: Rules) => post<Manifest>('/api/clean/apply', rules),
+  // t de Student: calculada en este equipo con Python, sin Ada ni ninguna IA (la permutación y la neurona tardan unos segundos).
+  tstudent: (alpha: number, alternativa: Alternativa) => call<TWelch>(`/api/tstudent?alpha=${alpha}&alternativa=${alternativa}`),
+  permutacion: (repeticiones: number, semilla: number) => call<TPermutacion>(`/api/tstudent/permutacion?repeticiones=${repeticiones}&semilla=${semilla}`, undefined, 180_000),
+  neurona: () => call<TNeurona>('/api/tstudent/neurona', undefined, 180_000),
   inference: (alpha: number, alternative: string) => post<InferenceResult>('/api/inference', { alpha, alternative }),
   inferenceLive: (rules: Rules, alpha: number, alternative: string) => post<InferenceResult>('/api/inference/live', { rules, alpha, alternative }),
   nbCells: () => call<{ cells: NbCell[]; done: Record<string, number>; count: number }>('/api/notebook/cells', undefined, 8000),
   nbReset: () => post<{ done: Record<string, number> }>('/api/notebook/reset', {}),
   nbRun: (cell_id: string, rules: Rules, alpha: number, alternative: string) => post<NbResult>('/api/notebook/run', { cell_id, rules, alpha, alternative }),
-  assistantStatus: () => call<{ configured: boolean; reachable: boolean; detail: string }>('/api/assistant/status', undefined, 8000),
-  // La primera respuesta carga el modelo en la GPU: puede tardar más de un minuto.
-  assistantExplain: (modo: 'explicar' | 'repaso', resultado: Record<string, unknown>) =>
-    call<AssistantReply>('/api/assistant/explain', { method: 'POST', body: JSON.stringify({ modo, resultado }) }, 220_000),
 }
-
-export interface AssistantReply { texto: string; modelo: string; segundos: number; cifras_no_verificadas: string[] }
 
 /** Descarga un archivo de la API (respeta la clave, que un enlace simple no enviaría). */
 export async function downloadFromApi(url: string, filename: string): Promise<void> {

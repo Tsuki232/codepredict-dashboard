@@ -278,6 +278,12 @@ def compact_probability(res: dict[str, Any]) -> dict[str, Any]:
     return _rnd({k: v for k, v in res.items() if k not in {"resolved", "dataset_sha256"}})
 
 
+def estado() -> dict[str, Any]:
+    """Cómo se presenta este motor en el panel (misma forma que el estado de Ada): siempre listo, siempre en este equipo, sin ninguna IA."""
+    return {"phase": "ready", "ready": True, "error": None, "load_seconds": 0, "mode": "python", "motor": "python", "root": None,
+            "note": "Estadística calculada en este equipo con Python (NumPy y SciPy), sin Ada ni ninguna IA. Cada resultado se comprueba por dos vías."}
+
+
 def construir() -> SimpleNamespace:
     """Módulos con la misma forma que los de Ada. Sin `ledger`: la auditoría de Ada solo existe cuando Ada está en este equipo."""
     inference = SimpleNamespace(compare_two_groups=compare_two_groups, chi_square_independence=chi_square_independence, two_proportions=two_proportions,

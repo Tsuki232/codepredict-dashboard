@@ -44,9 +44,9 @@ export function AdaDownModal() {
       <p className="small mt-2">{message}</p>
       <p className="mt-4">¿Cómo quieres seguir? Puedes usar el <strong>motor Python de este equipo</strong>, o reintentar con Ada cuando el PC que la corre esté encendido.</p>
       <ul className="small mt-3 flex list-disc flex-col gap-1 pl-5">
-        <li>Con Python, la limpieza y la estadística se calculan <strong>en este equipo</strong> (pandas, DuckDB y SciPy), cada resultado por dos vías independientes.</li>
-        <li><strong>No es Ada</strong>: el panel y el informe lo dirán en cada resultado.</li>
-        <li>Solo calcula Welch, χ², dos proporciones y Bayes (lo que usa este panel); no incluye el análisis de sensibilidad automático de Ada ni su registro de auditoría.</li>
+        <li>Con Python, la limpieza se calcula <strong>en este equipo</strong> (pandas y DuckDB), cada resultado por dos vías independientes.</li>
+        <li><strong>No es Ada</strong>: el panel lo dirá en cada resultado. La estadística de Inferencia (t de Student) <strong>nunca usa Ada</strong>: siempre se calcula aquí, con Python.</li>
+        <li>Python local no incluye el análisis de sensibilidad automático de Ada ni su registro de auditoría.</li>
       </ul>
       {error && <p className="small mt-3" style={{ color: 'var(--bad)' }} role="alert">⚠ {error}</p>}
       <div className="mt-5 flex flex-wrap gap-2">

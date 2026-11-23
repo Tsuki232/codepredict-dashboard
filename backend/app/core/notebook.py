@@ -17,7 +17,7 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 
-from app.core import ada_engine, cleaning, config, inference, workspace
+from app.core import cleaning, config, inference, pystats, workspace
 from app.core.cleaning import Rules
 
 
@@ -55,39 +55,39 @@ def lines(d: dict[str, Any]) -> str:
 
 
 def calc_welch(df, alpha, alternative):
-    """Welch sobre McCC: archivos con bug (x) frente a sin bug (y). Lo calcula Ada."""
+    """Welch sobre McCC: archivos con bug (x) frente a sin bug (y). Lo calcula Python (fórmula a mano y SciPy), sin Ada."""
     x = df.loc[df["defectuoso"] == 1, "McCC"].to_numpy(float)
     y = df.loc[df["defectuoso"] == 0, "McCC"].to_numpy(float)
-    res = ada_engine.require().inference.compare_two_groups(x, y, method="welch", alternative=alternative, alpha=alpha, sensitivity=False)
-    return ada_engine.require().inference.compact_result(res)
+    inf = pystats.construir().inference
+    return inf.compact_result(inf.compare_two_groups(x, y, method="welch", alternative=alternative, alpha=alpha, sensitivity=False))
 
 
 def calc_robusta(df, alpha, alternative):
-    """Sensibilidad: Welch sobre log(1+McCC) (Ada) y Mann-Whitney por rangos (este panel, con doble método)."""
+    """Sensibilidad: Welch sobre log(1+McCC) y Mann-Whitney por rangos (este panel, con doble método), todo con Python y sin Ada."""
     x = df.loc[df["defectuoso"] == 1, "McCC"].to_numpy(float)
     y = df.loc[df["defectuoso"] == 0, "McCC"].to_numpy(float)
-    inf = ada_engine.require().inference
+    inf = pystats.construir().inference
     log_res = inf.compact_result(inf.compare_two_groups(np.log1p(x), np.log1p(y), method="welch", alternative=alternative, alpha=alpha, sensitivity=False))
     return log_res, inference.robust_companion(x, y, alternative, alpha)
 
 
 def calc_chi2(df, alpha):
     t = cleaning.table2x2(df)
-    inf = ada_engine.require().inference
+    inf = pystats.construir().inference
     return inf.compact_result(inf.chi_square_independence([[t["C_D"], t["C_ND"]], [t["NC_D"], t["NC_ND"]]], alpha=alpha))
 
 
 def calc_dos_proporciones(df, alpha):
     t = cleaning.table2x2(df)
-    inf = ada_engine.require().inference
+    inf = pystats.construir().inference
     return inf.compact_result(inf.two_proportions([t["C_D"], t["NC_D"]], [t["C_D"] + t["C_ND"], t["NC_D"] + t["NC_ND"]], alpha=alpha))
 
 
 def calc_bayes(df, rules):
-    ada = ada_engine.require()
+    prob = pystats.construir().probability
     D = {"column": "bug", "op": ">", "value": rules.bug_threshold}
     C = {"column": "McCC", "op": ">", "value": rules.mccc_threshold}
-    return ada.probability.compact_probability(ada.probability.run_probability("bayes", df=df, A=D, B=C))
+    return prob.compact_probability(prob.run_probability("bayes", df=df, A=D, B=C))
 
 
 def _show_test(r: dict[str, Any], keys=("test", "statistic", "df", "p_value", "effect_size", "ci", "estimate", "proportions", "decision", "verified", "verification_methods", "warnings")) -> str:
@@ -168,7 +168,7 @@ def _run_welch(prev, rules, alpha, alternative):
 
 def _run_robusta(prev, rules, alpha, alternative):
     log_res, rob = calc_robusta(prev["df"], alpha, alternative)
-    return dict(prev), [text("# Welch sobre log(1 + McCC)  (Ada)\n" + _show_test(log_res)),
+    return dict(prev), [text("# Welch sobre log(1 + McCC)  (Python)\n" + _show_test(log_res)),
                         text("# Mann-Whitney por rangos  (este panel: scipy + fórmula de rangos)\n" + _show_test(rob))]
 
 
@@ -207,16 +207,16 @@ CELLS: list[Cell] = [
     Cell("tabla", "Tabla 2×2", "Conteos con los que trabajan χ², las proporciones y Bayes.", lambda: _src(cleaning.table2x2), _run_table),
     Cell("guardar", "Guardar el conjunto limpio", "Escribe el CSV limpio y su manifiesto con huellas SHA-256 en la carpeta de trabajo, y registra la operación en la bitácora de Ada.",
          lambda: _src(workspace.apply_cleaning), _run_save),
-    Cell("welch", "Prueba t de Welch (Ada)", "Compara la media de McCC entre archivos con y sin bug. Ada la verifica con scipy, statsmodels y la fórmula manual.",
-         lambda: _src(calc_welch), _run_welch, needs_ada=True),
+    Cell("welch", "Prueba t de Welch", "Compara la media de McCC entre archivos con y sin bug. Se calcula con Python y se comprueba con SciPy y la fórmula manual (sin Ada).",
+         lambda: _src(calc_welch), _run_welch),
     Cell("robusta", "¿Cambia la conclusión? (sensibilidad)", "McCC es muy asimétrica: se repite con log(1+McCC) y con un contraste por rangos.",
-         lambda: _src(calc_robusta, inference.robust_companion), _run_robusta, needs_ada=True),
-    Cell("chi2", "Chi-cuadrado de independencia (Ada)", "¿Son independientes «ser complejo» y «tener bug»?",
-         lambda: _src(calc_chi2), _run_chi2, needs_ada=True),
-    Cell("dosprop", "Dos proporciones (Ada)", "P(bug | complejo) frente a P(bug | no complejo).",
-         lambda: _src(calc_dos_proporciones), _run_two, needs_ada=True),
-    Cell("bayes", "Teorema de Bayes (Ada)", "P(bug | complejo) con los conteos reales, comprobado contra el conteo directo.",
-         lambda: _src(calc_bayes), _run_bayes, needs_ada=True),
+         lambda: _src(calc_robusta, inference.robust_companion), _run_robusta),
+    Cell("chi2", "Chi-cuadrado de independencia", "¿Son independientes «ser complejo» y «tener bug»?",
+         lambda: _src(calc_chi2), _run_chi2),
+    Cell("dosprop", "Dos proporciones", "P(bug | complejo) frente a P(bug | no complejo).",
+         lambda: _src(calc_dos_proporciones), _run_two),
+    Cell("bayes", "Teorema de Bayes", "P(bug | complejo) con los conteos reales, comprobado contra el conteo directo.",
+         lambda: _src(calc_bayes), _run_bayes),
 ]
 ORDER = [c.id for c in CELLS]
 BY_ID = {c.id: c for c in CELLS}
