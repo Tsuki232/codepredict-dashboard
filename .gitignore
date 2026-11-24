@@ -17,6 +17,9 @@ frontend/node_modules/
 # Resultados de la limpieza (se regeneran con el panel)
 data/work/
 
+# Datos de terceros descargados (p. ej. el artefacto de Cotroneo et al. 2025, 68 MB): se bajan con scripts/preparar_datos_ia.py y no se suben
+data/external/
+
 # Servidor de Ada (asistente): clave, procesos y programa del túnel NUNCA se suben
 ada_gateway/.env.gateway
 ada_gateway/.pids/
