@@ -203,6 +203,39 @@ def test_ada_apagada_o_con_clave_mala_abre_el_modal_y_no_se_filtra_la_clave(monk
     assert r.status_code == 503 and r.json()["code"] == "ada_no_disponible" and "rechazó la clave" in r.json()["detail"] and "clave-equivocada" not in r.text
 
 
+def test_el_tunel_caido_de_cloudflare_responde_530_y_tambien_abre_el_modal(monkeypatch, datos):
+    """Con el PC de Ada apagado, Cloudflare no corta la conexión: contesta él mismo con un 530 (error 1033, «túnel caído») en HTML.
+    Eso también debe abrir el aviso «Ada no disponible» (y no un error suelto «Ada remota respondió: error»)."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class Tunel(BaseHTTPRequestHandler):
+        def _caido(self):
+            cuerpo = b"<html><head><title>Cloudflare Tunnel error</title></head><body>Error 1033</body></html>"
+            self.send_response(530)
+            self.send_header("Content-Type", "text/html; charset=UTF-8")
+            self.send_header("Content-Length", str(len(cuerpo)))
+            self.end_headers()
+            self.wfile.write(cuerpo)
+
+        do_GET = do_POST = _caido
+
+        def log_message(self, *args):
+            pass
+
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), Tunel)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        d, csv = datos
+        c = _motor(monkeypatch, d / "work-530", csv, ADA_ENGINE="remote", ADA_REMOTE_URL=f"http://127.0.0.1:{srv.server_address[1]}", ADA_REMOTE_KEY=CLAVE)
+        for r in (c.get("/api/dataset/profile"), c.post("/api/clean/preview", json={}), c.post("/api/clean/apply", json={})):
+            assert r.status_code == 503 and r.json()["code"] == "ada_no_disponible" and "apagado" in r.json()["detail"] and CLAVE not in r.text
+        assert c.post("/api/inference/live", json={}).status_code == 200, "la estadística no depende de Ada"
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
 def test_con_ada_caida_la_estadistica_da_lo_mismo_y_la_persona_puede_elegir_python_para_limpiar(monkeypatch, datos, puerta):
     d, csv = datos
     c = _remoto(monkeypatch, datos, puerta, "work-ref")

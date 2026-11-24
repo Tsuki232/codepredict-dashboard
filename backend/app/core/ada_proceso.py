@@ -49,6 +49,8 @@ def _llamar(metodo: str, ruta: str, cuerpo: dict[str, Any] | None = None) -> dic
         raise ada_engine.AdaUnavailable("Ada remota rechazó la clave: revisa ADA_REMOTE_KEY en el archivo .env.")
     if r.status_code in (404, 405) and detalle == "Not Found":        # la ruta no existe: el servidor de Ada es de una versión anterior (un 404 «de verdad» trae otro texto)
         raise ada_engine.AdaUnavailable("El servidor de Ada es de una versión anterior y no ofrece el proceso completo: actualiza y reinicia el servidor de Ada (scripts/start_ada_server.ps1).")
+    if 520 <= r.status_code <= 530:         # Cloudflare contesta él mismo cuando el túnel está caído: 530 (error 1033) si el PC de Ada está apagado, 521–524 si no responde
+        raise ada_engine.AdaUnavailable("Ada remota no responde: el PC que corre Ada puede estar apagado o sin túnel.")
     if r.status_code in (429, 502, 503, 504):
         raise ada_engine.AdaUnavailable(f"Ada remota está ocupada o cargándose ({r.status_code}): {detalle}")
     raise ProcesoRemotoError(r.status_code, f"Ada remota respondió: {detalle}")
