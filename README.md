@@ -41,6 +41,8 @@ Una sola pantalla, pensada para presentar, con las cifras del proyecto y la comp
 - **Presentar:** el botón «Presentar» (cabecera, franja fija o barra de la película) abre el tablero a pantalla completa, **una escena a la vez y más grande**, con su subtítulo. Nada avanza solo: cada escena se anima, se queda completa y espera. Teclado: ← → (o Espacio) cambian de escena, `R` la repite, `Inicio`/`Fin` saltan, `F` pone el navegador a pantalla completa y `Esc` sale; en el celular se desliza el dedo. Lo de atrás queda inerte (no recibe foco ni lo leen los lectores de pantalla) y al salir la página vuelve a la escena donde se quedó.
 - **Cabecera y cifras fijas:** la pregunta del proyecto en grande, con las cinco cifras que la contestan; al bajar, esas mismas cifras quedan en una franja bajo la barra superior.
 - **Interacción:** al pasar el cursor (o con ← → tras entrar con Tab) las gráficas de complejidad, riesgo y permutación muestran una cruz y un cuadro con las cifras exactas. En la comparación con IA, tocar el nombre de una fuente la **resalta en todas las gráficas** y al cambiar entre Java y Python las barras se transforman en vez de repetirse.
+- **Mosaico:** en pantallas de 1 700 px o más el tablero pasa a **dos columnas** (la cabecera, el detalle de IA y las conclusiones ocupan las dos) con paneles del mismo alto por fila. Cada escena decide su diseño interno por el ancho de **su** caja (consultas de contenedor de Tailwind, clases `@3xl:`) y no por el de la ventana, así que la misma escena se ve bien a ancho completo, en media columna y en la presentación.
+- **Vídeo del tablero (MP4):** `node scripts/grabar_tablero.mjs --salida CodePredict_Tablero.mp4` graba el modo presentación fotograma a fotograma, **sin instalar nada**: usa Edge en segundo plano, el protocolo de depuración de Chromium (el `WebSocket` que trae Node 22) y `ffmpeg`. Como cada gráfica es una función del tiempo de su escena, el programa pone el reloj de la película en el instante exacto de cada fotograma (`?captura` en la dirección deja el reloj en sus manos), así que el vídeo sale idéntico en cada grabación. Dura lo mismo que la película (1 min 38 s, sin sonido), a 1920×1080 y 30 cuadros por segundo; con `--prueba 12` solo saca 12 fotos sueltas para revisar y con `--sin-gpu` dibuja con el procesador (más lento). Necesita el panel corriendo y la limpieza guardada.
 - **Carga:** mientras se calcula el tablero (y al arrancar o cambiar de vista) se muestra la silueta de lo que viene, con un brillo suave, en vez de un texto suelto.
 - **Movimiento:** una sola fuente de curvas, resortes y tiempos (`frontend/src/motion/`); entradas con opacidad + desplazamiento + escala, escalonadas; las salidas son más rápidas; fondo de papel milimetrado con resplandores lentos que se detiene con «reducir movimiento»; todo con `transform` y `opacity`.
 
@@ -91,6 +93,22 @@ si lo necesitas, bájalo de Zenodo.
 **Para usarlo no hay que configurar nada:** clonas, ejecutas `.\scripts\run.ps1` y el panel lee ese CSV. Para analizar otro archivo con las mismas 11 columnas, crea un `.env` en la raíz con
 `CODEPREDICT_DATASET=C:\ruta\al\otro.csv`.
 
+## Abrir con un clic (en cualquier equipo)
+
+1. **Descarga el proyecto** (en GitHub: *Code → Download ZIP*) y descomprímelo, o clónalo con `git clone`.
+2. **Haz doble clic** en:
+   - **Windows:** `Abrir CodePredict.cmd`
+   - **macOS:** `Abrir CodePredict.command` (o `./abrir_codepredict.sh` en la terminal) · **Linux:** `./abrir_codepredict.sh`
+3. Se abre el navegador en el **Tablero estadístico**, ya con los datos listos. Para cerrar el panel, cierra la ventana negra.
+
+**Qué pide a quien lo abre:** casi nada. Necesita **Python 3.12 o más nuevo**; si ya lo tienes, no te pregunta nada. Si falta en Windows, ofrece instalarlo con *winget* (una sola pregunta S/N, sin administrador, unos 100 MB). La primera vez necesita internet unos minutos para bajar los paquetes (pandas, SciPy, DuckDB…, unos 150 MB) a una carpeta `.venv` **dentro del proyecto**; no toca nada más del equipo. **No usa PowerShell**, así que no le afecta que el equipo tenga bloqueados los scripts `.ps1`, y no pide permisos de administrador.
+
+- **Sin Ada** (lo normal en otros equipos), el panel trabaja con el **motor Python local** y lo dice: la barra lateral muestra «Motor: Python local (sin Ada)» y el manifiesto guarda `python-local`. La primera vez prepara solo los datos limpios con las reglas por defecto (unos segundos); el CSV original no se toca. Con Ada o su API configurada, el lanzador no cambia nada y sigue mandando ella.
+- **Windows SmartScreen:** si descargaste el ZIP, Windows puede decir «Windows protegió su PC»: pulsa *Más información → Ejecutar de todas formas*. Para evitarlo, antes de descomprimir haz clic derecho en el ZIP → *Propiedades* → marca *Desbloquear*.
+- La interfaz **ya viene compilada** en `frontend/dist` (no hace falta Node). Si cambias algo de `frontend/src`, compila con `npm run build` dentro de `frontend/` y sube también `frontend/dist`.
+- Si el puerto 8000 está ocupado, usa el siguiente libre. Si algo falla, la ventana se queda abierta con el motivo: mándale una foto a quien te pasó el proyecto.
+- Se comprueba con `Abrir CodePredict.cmd --probar` (dice qué Python encontró y no instala nada) y con las pruebas `backend/tests/test_abrir.py`.
+
 ## Requisitos y ejecución
 
 Este panel usa **Ada para perfilar y limpiar**; la estadística la hace Python (NumPy y SciPy). En este equipo corre con el entorno de Ada (ya trae FastAPI, pandas, DuckDB, scipy y statsmodels).
@@ -111,7 +129,7 @@ Desarrollo con recarga: `uvicorn app.main:app --reload --app-dir backend` y, en 
 ### Pruebas
 
 ```powershell
-cd backend;  ..\..\Ada\.venv\Scripts\python.exe -m pytest -q     # 121 pruebas (cuaderno, inferencia en vivo, t de Student, tablero, IA frente a personas, CSV real, motor Python local contra Ada y Ada remota por la puerta de enlace real)
+cd backend;  ..\..\Ada\.venv\Scripts\python.exe -m pytest -q     # 137 pruebas (cuaderno, inferencia en vivo, t de Student, tablero, IA frente a personas, «Abrir CodePredict», CSV real, motor Python local contra Ada y Ada remota por la puerta de enlace real)
 cd frontend; npm test                                              # 91 pruebas (contraste de colores, cifras, distribución t contra SciPy, texto del informe, aviso «Ada no disponible», curvas de tiempo, reloj de la película y modo presentación, bandas bajo el cursor)
 # puerta de enlace de Ada (en la raíz):  ..\Ada\.venv\Scripts\python.exe -m pytest -q ada_gateway/tests    # 68 pruebas
 cd ada_gateway\monitor; node --test                                # 8 pruebas del panel «Ada en vivo»
@@ -129,6 +147,9 @@ backend/app/core/analisis_t.py    t de Student sobre el conjunto limpio guardado
 backend/app/core/tablero.py       cifras descriptivas del tablero (embudo, distribución, riesgo por tramo, tabla 2×2, Bayes)
 backend/app/core/ia_comparativa.py  personas frente a IA: tasas con IC de Wilson, razones y d de Cohen (datos agregados, sin valores p)
 backend/app/datos/ia_cotroneo2025.json  cifras extraídas del artefacto de Cotroneo et al. (2025) con scripts/preparar_datos_ia.py
+Abrir CodePredict.cmd             doble clic en Windows: prepara Python y abre el panel (sin PowerShell); .command y .sh para macOS y Linux
+scripts/abrir.py                  el lanzador: comprueba, prepara los datos la primera vez, elige puerto y abre el navegador
+scripts/grabar_tablero.mjs        graba el tablero a un vídeo MP4 (Edge en segundo plano + ffmpeg, sin instalar nada)
 backend/app/core/pystats.py       motor estadístico local del Informe y el Cuaderno (Welch, χ², Fisher, proporciones, Bayes)
 backend/app/core/inference.py     inferencia en vivo del Informe (+ comprobación robusta por rangos), en Python local
 backend/app/core/ada_engine.py    motor de limpieza: Ada local, Ada remota o Python local (con aviso)

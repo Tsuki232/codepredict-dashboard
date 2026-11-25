@@ -4,7 +4,8 @@ __pycache__/
 .venv/
 .pytest_cache/
 node_modules/
-frontend/dist/
+# frontend/dist/ SÍ se sube (la interfaz ya compilada, ~1 MB): así «Abrir CodePredict» funciona en cualquier equipo sin instalar Node.
+# Al cambiar algo de frontend/src hay que volver a compilar (npm run build en frontend/) y subir también frontend/dist.
 *.log
 *.tsbuildinfo
 .DS_Store

@@ -67,6 +67,8 @@ export function TableroView() {
   const [foco, setFoco] = useState<IaFuenteId | null>(null)
   const [presentando, setPresentando] = useState<number | null>(null)       // escena desde la que se abrió la presentación (null = cerrada)
   const sha = applied?.output.sha256 ?? null
+  // `?captura` en la dirección abre la presentación sola y deja el reloj de la película en manos de quien graba el vídeo (scripts/grabar_tablero.mjs).
+  const captura = useMemo(() => new URLSearchParams(window.location.search).has('captura'), [])
 
   useEffect(() => {
     let vivo = true
@@ -84,6 +86,14 @@ export function TableroView() {
   const onPelicula = useCallback(() => pelicula.ir(0), [pelicula])
   const onPresentar = useCallback(() => setPresentando(Math.max(0, pelicula.escenaActiva())), [pelicula])
   const cerrarPresentacion = useCallback(() => setPresentando(null), [])
+
+  useEffect(() => {
+    if (!captura || datos === null || defs.length === 0) return
+    const w = window as unknown as Record<string, unknown>
+    w.__pelicula = pelicula                                                 // para mover el reloj desde fuera: __pelicula.buscar(ms)
+    w.__tableroListo = true
+    setPresentando((x) => x ?? 0)
+  }, [captura, datos, defs.length, pelicula])
 
   // Durante la película, la pantalla acompaña a la escena que suena.
   useEffect(() => {
@@ -139,14 +149,14 @@ export function TableroView() {
       )}
 
       {datos !== null && (
-        <Escalonado className="flex flex-col gap-6">
+        <Escalonado className="tablero-rejilla flex flex-col gap-6">
           {defs.map((e, i) => <Fragment key={e.id}>{renderEscena(e, i)}</Fragment>)}
         </Escalonado>
       )}
 
       {datos !== null && defs.length > 0 && <BarraPelicula p={pelicula} escenas={defs} onPresentar={onPresentar} />}
 
-      {presentando !== null && <Presentacion p={pelicula} defs={defs} inicio={presentando} renderEscena={renderEscena} onSalir={cerrarPresentacion} />}
+      {presentando !== null && <Presentacion p={pelicula} defs={defs} inicio={presentando} renderEscena={renderEscena} onSalir={cerrarPresentacion} captura={captura} />}
     </div>
   )
 }

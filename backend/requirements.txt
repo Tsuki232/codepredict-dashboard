@@ -1,0 +1,12 @@
+# Dependencias del panel: las mismas de backend/pyproject.toml (una prueba comprueba que no se separen).
+# «Abrir CodePredict» las instala solo, la primera vez, dentro de la carpeta .venv del proyecto.
+# (uvicorn sin el extra «standard»: no se usa recarga automática ni más protocolos, y así se instala menos.)
+fastapi>=0.115
+uvicorn>=0.30
+numpy>=2.0
+pandas>=2.2
+duckdb>=1.1
+scipy>=1.13
+pydantic>=2.8
+python-dotenv>=1.0
+httpx>=0.27

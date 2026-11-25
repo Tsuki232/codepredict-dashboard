@@ -123,13 +123,13 @@ export const IaDetalle = memo(function IaDetalle({ p, i, n, ia, leng, onLeng, fo
   const tipos = l.odc_tipos
   const suave = k >= 1
   return (
-    <MarcoEscena p={p} i={i} n={n} id="ia-detalle" titulo="Complejidad de las funciones y tipos de defecto"
+    <MarcoEscena p={p} i={i} n={n} id="ia-detalle" ancha titulo="Complejidad de las funciones y tipos de defecto"
       nota="CCN es la complejidad ciclomática de cada función (cuántos caminos distintos tiene) y NLOC sus líneas de código sin comentarios. Los tipos de defecto siguen la clasificación ODC (Orthogonal Defect Classification)." repetir={repetir} refEscena={ref}
       pie={<><ul className="m-0 list-disc pl-5"><li>{l.lectura.find((x) => x.metrica === 'complejidad')?.texto}</li>
         <li>d de Cohen: la diferencia de CCN medida en desviaciones estándar combinadas; el signo negativo significa menos complejidad que las personas. Como la CCN tiene cola larga hacia arriba, es una medida orientativa y no una prueba.</li></ul></>}
       datos={{ cabeza: ['Fuente', 'Funciones', 'CCN media', 'CCN desv.', 'NLOC medio', 'd de Cohen (CCN)', ...tipos.map((t) => `${ODC[t] ?? t} (%)`)], filas: l.fuentes.map((f) => [f.nombre, fmtInt(f.complejidad.funciones), fmt(f.complejidad.CCN.media, 2), fmt(f.complejidad.CCN.sd, 2), fmt(f.complejidad.NLOC.media, 2), f.vs_personas ? fmt(f.vs_personas.ccn.d_cohen, 2) : '—', ...tipos.map((t) => fmtPct(f.odc.find((o) => o.tipo === t)?.parte ?? 0))]) }}>
       <Selector leng={leng} onLeng={onLeng} l={l} foco={foco} onFoco={onFoco} />
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-8 @3xl:grid-cols-2">
         <div>
           <p className="font-semibold">Complejidad ciclomática media por función (CCN)</p>
           <p className="small mb-3">Más alto = funciones con más caminos de ejecución.</p>
@@ -221,9 +221,9 @@ export const Cierre = memo(function Cierre({ p, i, n, tab, w, neu, ia }: Base & 
   let c = 0
   const total = si.length + no.length
   return (
-    <MarcoEscena p={p} i={i} n={n} id="cierre" titulo="Conclusiones y límites" nota="Cada frase sale de las cifras de este tablero; los límites son parte del resultado." repetir={repetir} refEscena={ref}
+    <MarcoEscena p={p} i={i} n={n} id="cierre" ancha titulo="Conclusiones y límites" nota="Cada frase sale de las cifras de este tablero; los límites son parte del resultado." repetir={repetir} refEscena={ref}
       pie={<>Fuentes: Ferenc, R., Tóth, Z., Ladányi, G., Siket, I., y Gyimóthy, T. (2020). <i>Unified Bug Dataset</i> (v1.2). Zenodo. doi:10.5281/zenodo.3693686 (CC BY 4.0).{ia && <> {ia.meta.cita} Zenodo doi:{ia.meta.zenodo} ({ia.meta.licencia}).</>}</>}>
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-8 @3xl:grid-cols-2">
         {filas.map((f) => (
           <div key={f.t}>
             <p className="mb-3 font-semibold" style={{ color: f.color }}>{f.t}</p>

@@ -27,8 +27,10 @@ export function useK(p: Pelicula, i: number, ms: number) {
 }
 
 /** El marco de cada escena: un panel con número, botón de repetir y, abajo, los datos exactos de la gráfica en una tabla. */
-export function MarcoEscena({ p, i, n, id, titulo, nota, repetir, refEscena, children, pie, datos }: {
+export function MarcoEscena({ p, i, n, id, titulo, nota, repetir, refEscena, children, pie, datos, ancha = false }: {
   p: Pelicula; i: number; n: number; id: string; titulo: string; nota?: string
+  /** En el mosaico de pantallas muy anchas, esta escena ocupa las dos columnas. */
+  ancha?: boolean
   repetir: () => void; refEscena: React.RefObject<HTMLDivElement | null>
   children: ReactNode; pie?: ReactNode; datos?: { cabeza: string[]; filas: (string | number)[][] }
 }) {
@@ -36,7 +38,7 @@ export function MarcoEscena({ p, i, n, id, titulo, nota, repetir, refEscena, chi
   const sufijo = useContext(SufijoIdContext)
   const estado = activa < 0 ? 'libre' : activa === i ? 'activa' : 'otra'
   return (
-    <div ref={refEscena} id={`escena-${id}${sufijo}`} className="escena" data-estado={estado}>
+    <div ref={refEscena} id={`escena-${id}${sufijo}`} className="escena" data-estado={estado} data-ancha={ancha}>
       <Panel title={`${n}. ${titulo}`} note={nota}>
         <div className="escena-herr">
           <button type="button" className="chip" style={{ height: 28, fontSize: '0.8125rem' }} onClick={repetir} aria-label={`Repetir la escena ${n}: ${titulo}`}>

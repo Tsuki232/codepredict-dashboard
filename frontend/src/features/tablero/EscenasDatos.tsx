@@ -240,7 +240,7 @@ export const Probabilidad = memo(function Probabilidad({ p, i, n, tab }: Base & 
       repetir={repetir} refEscena={ref}
       pie={<>Si los dos sucesos fueran independientes, P(bug | compleja) sería igual a P(bug) = {fmtPct(t.p_d)}; en cambio vale {fmtPct(t.p_d_dado_c)}, así que <b>son dependientes</b>. Con el teorema de Bayes se invierte la pregunta: P(compleja | bug) = P(bug | compleja) · P(compleja) / P(bug) = {fmt(t.p_d_dado_c, 4)} · {fmt(t.p_c, 4)} / {fmt(t.p_d, 4)} = <b>{fmt(t.p_c_dado_d, 4)}</b>; contando directamente los archivos con bug que son complejos sale {fmt(t.p_c_dado_d_directa, 4)} ({t.bayes_coincide ? 'coincide' : 'no coincide'}).</>}
       datos={{ cabeza: ['', 'Con bug', 'Sin bug'], filas: [[`Compleja (McCC > ${umbral})`, fmtInt(t.celdas.C_D), fmtInt(t.celdas.C_ND)], ['No compleja', fmtInt(t.celdas.NC_D), fmtInt(t.celdas.NC_ND)]] }}>
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 @3xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <Svg ancho={AN} alto={AL} minimo={420} maximo={560} titulo="Mosaico de la tabla 2×2" descripcion="Dos columnas, archivos no complejos y complejos; cada una dividida en con bug (rayado, arriba) y sin bug (abajo).">
           <PatronRayas id="rayas-mosaico" color="var(--serie-2)" />
           {columna(o.x, wNC, t.p_d_dado_nc, t.celdas.NC_D, t.celdas.NC_ND, `No compleja (McCC ≤ ${umbral})`)}

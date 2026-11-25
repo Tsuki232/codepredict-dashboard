@@ -1,2 +1,8 @@
 # Los datos originales se guardan byte a byte (sin convertir saltos de línea): su huella SHA-256 debe coincidir con data/raw/SOURCE.md
 *.csv -text
+
+# Los archivos de doble clic se guardan tal cual (sin que Git cambie sus finales de línea):
+# el .cmd de Windows necesita CRLF y los de macOS/Linux necesitan LF, también cuando se descarga el ZIP de GitHub.
+*.cmd -text
+*.sh text eol=lf
+*.command text eol=lf

@@ -188,7 +188,7 @@ export const Neurona = memo(function Neurona({ p, i, n, neu }: Base & { neu: TNe
       repetir={repetir} refEscena={ref}
       pie={<>El AUC dice qué tan bien ordena el modelo: {fmt(neu.auc_prueba, 2)} significa que, tomando al azar un archivo con bug y otro sin bug, el modelo le da más probabilidad al que tiene bug el {fmtPct(neu.auc_prueba, 0)} de las veces (0,50 sería tirar una moneda). Es una señal real pero <b>modesta</b>{mejora != null && <>: con el umbral 0,5 acierta {fmt(u!.exactitud * 100, 1)} % de los archivos y la regla trivial «decir siempre sin bug» acierta {fmt(triv! * 100, 1)} %, es decir, {mejora >= 0 ? `${fmt(mejora, 1)} puntos más` : `${fmt(-mejora, 1)} puntos menos`} que no hacer nada</>}. Una sola variable no basta para predecir bugs.</>}
       datos={{ cabeza: ['Medida', 'Valor'], filas: [['AUC (20 % de prueba)', fmt(neu.auc_prueba, 4)], ['AUC (80 % de entrenamiento)', fmt(neu.auc_entrenamiento, 4)], ...(u ? [['Exactitud con umbral 0,5', fmtPct(u.exactitud)], ['Verdaderos positivos', fmtInt(u.vp)], ['Falsos positivos', fmtInt(u.fp)], ['Falsos negativos', fmtInt(u.fn)], ['Verdaderos negativos', fmtInt(u.vn)]] : []), ...(triv != null ? [['Exactitud de la regla trivial', fmtPct(triv)]] : [])] }}>
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {pts ? (
           <Svg ancho={AN} alto={AL} minimo={380} maximo={520} titulo="Curva ROC de la neurona" descripcion={`La curva sube por encima de la diagonal; el área bajo ella (AUC) es ${fmt(neu.auc_prueba, 2)}.`}>
             <rect x={o.x} y={o.y} width={o.s} height={o.s} fill="var(--paper)" stroke="var(--grid-strong)" />

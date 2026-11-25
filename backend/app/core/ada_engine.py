@@ -5,7 +5,8 @@ Hay tres formas de trabajar y el panel muestra siempre cuál está en uso:
   · Ada REMOTA    Ada está en otro equipo del grupo: el panel le pide TODO el proceso (perfil, limpieza, inferencia) por su API (ADA_REMOTE_URL y ADA_REMOTE_KEY).
   · Python local  La persona eligió seguir sin Ada (modal «Ada no disponible»): limpieza y estadística calculadas aquí, con doble verificación propia (pystats).
 ADA_ENGINE=auto (por defecto) usa Ada local si está y, si no, Ada remota; «local» o «remote» fuerzan una de las dos (para probar).
-El modo Python solo se activa por decisión explícita de la persona (`set_motor('python')`); nunca se cae a él en silencio.
+El modo Python solo se activa por decisión explícita de la persona (`set_motor('python')` desde el modal, o CODEPREDICT_MOTOR=python al abrir el panel, como hace
+«Abrir CodePredict» en un equipo sin Ada); nunca se cae a él en silencio.
 """
 from __future__ import annotations
 
@@ -22,7 +23,13 @@ from app.core import config
 _lock = threading.Lock()
 _state: dict[str, Any] = {"phase": "idle", "error": None, "seconds": None, "mode": None, "note": None}
 _mods: SimpleNamespace | None = None
-_pref: dict[str, str] = {"motor": "ada"}      # «ada» (local o remota) o «python»; lo cambia la persona con el modal
+def _motor_inicial() -> str:
+    """«python» solo si quien abrió el panel lo pidió expresamente (CODEPREDICT_MOTOR=python): es lo que hace «Abrir CodePredict» en un equipo sin Ada.
+    Sigue siendo una decisión de la persona, tomada al abrirlo, y el panel la rotula igual que si la hubiera elegido en el modal. Vacío o cualquier otra cosa: «ada»."""
+    return "python" if (os.getenv("CODEPREDICT_MOTOR") or "").strip().lower() == "python" else "ada"
+
+
+_pref: dict[str, str] = {"motor": _motor_inicial()}      # «ada» (local o remota) o «python»; lo cambia la persona con el modal
 _py_mods: SimpleNamespace | None = None
 
 
