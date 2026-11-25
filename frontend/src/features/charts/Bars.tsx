@@ -6,7 +6,7 @@ export function Bars({ prior, posterior }: { prior: number; posterior: number })
     <div>
       <div className="small mb-1 flex justify-between"><span>{label}</span><span className="font-semibold" style={{ color: 'var(--ink)' }}>{fmtPct(v)}</span></div>
       <div className="h-[12px] overflow-hidden rounded-full" style={{ background: 'var(--grid)' }} aria-hidden>
-        <div className="h-full rounded-full" style={{ width: `${v * 100}%`, background: color, transition: 'width var(--t-slow) var(--ease)' }} />
+        <div className="entra-x h-full rounded-full" style={{ width: `${v * 100}%`, background: color, transition: 'width var(--t-slow) var(--ease)' }} />
       </div>
     </div>
   )

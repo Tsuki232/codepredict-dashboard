@@ -4,19 +4,35 @@ import type { ReactNode } from 'react'
 import { ALL_ITEMS, APP, NAV, type ViewId, itemOf } from '../app.config'
 import { api } from '../lib/api'
 import { fmtInt } from '../lib/format'
+import { Ambiente } from '../motion/Ambiente'
+import { Aparece, Escalonado } from '../motion/Escalonado'
+import { CURVA } from '../motion/tokens'
 import { useStore } from '../state/store'
 import type { Health } from '../state/types'
+import { AnimatedNumber } from '../ui/AnimatedNumber'
 
 /** Marca de la aplicación: tres barras (distribución de una métrica de código). */
 function Mark() {
+  const reduce = useReducedMotion()
+  // Las tres barras crecen desde la base una tras otra al cargar la aplicación.
+  const barra = (i: number) => ({
+    initial: reduce ? false : { scaleY: 0 }, animate: { scaleY: 1 },
+    transition: { delay: 0.25 + i * 0.1, duration: 0.7, ease: CURVA.salida },
+    style: { transformBox: 'fill-box' as const, transformOrigin: 'bottom' as const },
+  })
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
       <rect x="1" y="1" width="26" height="26" rx="7" fill="var(--ink)" />
-      <rect x="6" y="14" width="3.6" height="8" rx="1" fill="var(--bg)" />
-      <rect x="12.2" y="7" width="3.6" height="15" rx="1" fill="var(--serie-2)" stroke="var(--bg)" strokeWidth="0.8" />
-      <rect x="18.4" y="11" width="3.6" height="11" rx="1" fill="var(--bg)" />
+      <motion.rect x="6" y="14" width="3.6" height="8" rx="1" fill="var(--bg)" {...barra(0)} />
+      <motion.rect x="12.2" y="7" width="3.6" height="15" rx="1" fill="var(--serie-2)" stroke="var(--bg)" strokeWidth="0.8" {...barra(1)} />
+      <motion.rect x="18.4" y="11" width="3.6" height="11" rx="1" fill="var(--bg)" {...barra(2)} />
     </svg>
   )
+}
+
+/** Cifra de la barra superior: cuenta hasta su valor al cargar y cada vez que cambia. */
+function Cifra({ v }: { v: number | null | undefined }) {
+  return v != null && Number.isFinite(v) ? <AnimatedNumber value={v} decimals={0} format={fmtInt} duration={0.9} /> : <>{fmtInt(v)}</>
 }
 
 function Item({ id }: { id: ViewId }) {
@@ -59,12 +75,14 @@ export function Sidebar() {
           <p className="small">{APP.tagline}</p>
         </div>
       </div>
-      {NAV.map((g, i) => (
-        <nav key={g.group} className={`flex flex-col gap-1 ${i ? 'mt-6' : ''}`} aria-label={g.group}>
-          <p className="nav-group">{g.group}</p>
-          {g.items.map((it) => <Item key={it.id} id={it.id} />)}
-        </nav>
-      ))}
+      <Escalonado>
+        {NAV.map((g, i) => (
+          <nav key={g.group} className={`flex flex-col gap-1 ${i ? 'mt-6' : ''}`} aria-label={g.group}>
+            <p className="nav-group">{g.group}</p>
+            {g.items.map((it) => <Aparece key={it.id}><Item id={it.id} /></Aparece>)}
+          </nav>
+        ))}
+      </Escalonado>
       <div className="mt-auto px-3 pt-6">
         <p className="small flex items-center gap-2"><span className="nav-dot" style={{ background: ada.color, margin: 0 }} aria-hidden /> {ada.text}</p>
         {health?.ada.mode === 'python' && (
@@ -100,11 +118,11 @@ export function Topbar() {
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <dl className="topbar-metrics hidden md:flex" aria-label="Estado de los datos">
-          <div><dt>Crudo</dt><dd>{fmtInt(rowsIn)}</dd></div>
+          <div><dt>Crudo</dt><dd><Cifra v={rowsIn} /></dd></div>
           <span className="topbar-sep" aria-hidden />
-          <div><dt>Con estas reglas</dt><dd>{fmtInt(preview?.rows_out)}</dd></div>
+          <div><dt>Con estas reglas</dt><dd><Cifra v={preview?.rows_out} /></dd></div>
           <span className="topbar-sep" aria-hidden />
-          <div><dt>Guardado</dt><dd>{applied ? fmtInt(applied.output.rows) : 'aún no'}</dd></div>
+          <div><dt>Guardado</dt><dd>{applied ? <Cifra v={applied.output.rows} /> : 'aún no'}</dd></div>
         </dl>
         <button className="btn-icon" title={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
           aria-label={theme === 'dark' ? 'Usar tema claro' : 'Usar tema oscuro'}
@@ -133,13 +151,16 @@ export function TabBar() {
 
 export function Shell({ children }: { children: ReactNode }) {
   return (
-    <div className="shell">
-      <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar />
-        <main className="page" id="contenido">{children}</main>
+    <>
+      <Ambiente />
+      <div className="shell">
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Topbar />
+          <main className="page" id="contenido">{children}</main>
+        </div>
+        <TabBar />
       </div>
-      <TabBar />
-    </div>
+    </>
   )
 }

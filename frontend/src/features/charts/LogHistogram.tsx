@@ -103,9 +103,9 @@ export function LogHistogram({ edges, series, marks = [], normalize = false, xLa
               const x0 = sx(edges[i]), x1 = sx(edges[i + 1]), top = sy(val(s, i))
               const h = Math.max(0, M.top + ih - top)
               if (s.style === 'outline') {
-                return <rect key={i} x={x0 + 0.5} y={top} width={Math.max(0, x1 - x0 - 1)} height={h} fill="none" stroke={s.color} strokeWidth={1.4} opacity={0.9} style={{ transition: 'y 260ms var(--ease), height 260ms var(--ease)' }} />
+                return <rect key={i} className="entra-barra" x={x0 + 0.5} y={top} width={Math.max(0, x1 - x0 - 1)} height={h} fill="none" stroke={s.color} strokeWidth={1.4} opacity={0.9} style={{ transition: 'y 260ms var(--ease), height 260ms var(--ease)', ['--retraso' as string]: `${Math.min(i, 40) * 12}ms` }} />
               }
-              return <rect key={i} x={x0 + 0.5} y={top} width={Math.max(0, x1 - x0 - 1)} height={h} fill={s.color} opacity={0.55} style={{ transition: 'y 260ms var(--ease), height 260ms var(--ease)' }} />
+              return <rect key={i} className="entra-barra" x={x0 + 0.5} y={top} width={Math.max(0, x1 - x0 - 1)} height={h} fill={s.color} opacity={0.55} style={{ transition: 'y 260ms var(--ease), height 260ms var(--ease)', ['--retraso' as string]: `${Math.min(i, 40) * 12}ms` }} />
             })}
           </g>
         ))}

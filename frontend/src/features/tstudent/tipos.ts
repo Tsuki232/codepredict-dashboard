@@ -56,4 +56,10 @@ export interface TNeurona {
   ejemplos: { mccc: number; p: number }[]
   tramos: { desde: number; hasta: number; n: number; observado: number; predicho: number }[]
   verificacion: { w_newton: number; b_newton: number; diferencia_w: number; diferencia_b: number; coincide: boolean }
+  /** Curva ROC del 20 % de prueba (hasta 80 puntos para dibujarla) y su área por trapecios, que debe coincidir con `auc_prueba`. */
+  roc?: { puntos: { fpr: number; tpr: number }[]; auc_trapecios: number }
+  /** Matriz de confusión y métricas al declarar «con bug» cuando la probabilidad llega a 0,5. */
+  umbral?: { umbral: number; vp: number; fp: number; fn: number; vn: number; exactitud: number; precision: number | null; sensibilidad: number | null; f1: number | null }
+  /** Exactitud de acertar siempre con la clase más común: la vara que debe superar el modelo. */
+  regla_trivial?: { exactitud: number }
 }

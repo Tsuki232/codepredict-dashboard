@@ -3,8 +3,10 @@ import type { ComponentType } from 'react'
 import type { ViewId } from './app.config'
 import { AdaDownModal } from './features/engine/AdaDownModal'
 import { Shell } from './layout/Shell'
+import { Escalonado } from './motion/Escalonado'
 import { useStore } from './state/store'
 import { BlurViewTransition } from './ui/BlurViewTransition'
+import { EsqueletoVista } from './ui/Esqueleto'
 import { Panel } from './ui/Panel'
 import { FuenteView } from './views/FuenteView'
 
@@ -13,11 +15,13 @@ const LimpiezaView = lazy(() => import('./views/LimpiezaView').then((m) => ({ de
 const CuadernoView = lazy(() => import('./views/CuadernoView').then((m) => ({ default: m.CuadernoView })))
 const InformeView = lazy(() => import('./views/InformeView').then((m) => ({ default: m.InformeView })))
 const InferenciaView = lazy(() => import('./views/InferenciaView').then((m) => ({ default: m.InferenciaView })))
+const TableroView = lazy(() => import('./views/TableroView').then((m) => ({ default: m.TableroView })))
 
 const VIEWS: Record<ViewId, ComponentType> = {
   fuente: FuenteView,
   limpieza: LimpiezaView,
   cuaderno: CuadernoView,
+  tablero: TableroView,
   inferencia: InferenciaView,
   informe: InformeView,
 }
@@ -47,11 +51,11 @@ export default function App() {
       {serverError ? (
         <ServerDown message={serverError} />
       ) : booting ? (
-        <p className="label py-24 text-center" role="status">Leyendo los datos…</p>
+        <EsqueletoVista paneles={2} mensaje="Leyendo los datos…" />
       ) : (
         <BlurViewTransition viewKey={view}>
-          <Suspense fallback={<p className="label py-12 text-center">Cargando vista…</p>}>
-            <View />
+          <Suspense fallback={<EsqueletoVista paneles={2} mensaje="Cargando vista…" />}>
+            <Escalonado><View /></Escalonado>
           </Suspense>
         </BlurViewTransition>
       )}

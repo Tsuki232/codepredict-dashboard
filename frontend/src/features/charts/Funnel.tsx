@@ -48,7 +48,7 @@ export function StepDetails({ step }: { step: Step }) {
 export function Funnel({ steps, total }: { steps: Step[]; total: number }) {
   const [open, setOpen] = useState<string | null>(null)
   return (
-    <ol className="flex flex-col" aria-label="Pasos de la limpieza">
+    <ol className="cascada flex flex-col" aria-label="Pasos de la limpieza">
       {steps.map((s, i) => {
         const keep = total ? (s.after / total) * 100 : 0
         const lost = total ? (s.removed / total) * 100 : 0
@@ -66,8 +66,8 @@ export function Funnel({ steps, total }: { steps: Step[]; total: number }) {
               </span>
               <span className="flex items-center gap-3">
                 <span className="relative h-[10px] flex-1 overflow-hidden rounded-full" style={{ background: 'var(--grid)' }} aria-hidden>
-                  <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${keep}%`, background: 'var(--serie-1)', transition: 'width var(--t-slow) var(--ease)' }} />
-                  {lost > 0 && <span className="absolute inset-y-0" style={{ left: `${keep}%`, width: `${Math.max(lost, 0.6)}%`, background: 'var(--serie-2)', transition: 'all var(--t-slow) var(--ease)' }} />}
+                  <span className="entra-x absolute inset-y-0 left-0 rounded-full" style={{ width: `${keep}%`, background: 'var(--serie-1)', transition: 'width var(--t-slow) var(--ease)', ['--retraso' as string]: `${200 + i * 70}ms` }} />
+                  {lost > 0 && <span className="entra-fade absolute inset-y-0" style={{ left: `${keep}%`, width: `${Math.max(lost, 0.6)}%`, background: 'var(--serie-2)', transition: 'all var(--t-slow) var(--ease)', ['--retraso' as string]: `${700 + i * 70}ms` }} />}
                 </span>
                 <span className="w-[150px] shrink-0 sm:w-[210px] text-right text-[0.875rem] font-semibold tabular-nums">
                   {fmtInt(s.before)} → {fmtInt(s.after)}

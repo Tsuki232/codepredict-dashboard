@@ -140,6 +140,33 @@ def _auc(puntaje: np.ndarray, etiqueta: np.ndarray) -> float:
     return float((r[etiqueta == 1].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
 
 
+def _curva_roc(puntaje: np.ndarray, etiqueta: np.ndarray, max_puntos: int = 80) -> dict[str, Any]:
+    """Curva ROC: recorre los puntajes de mayor a menor y, en cada corte, anota la fracción de archivos con bug detectados (sensibilidad) y la de archivos sin bug
+    marcados por error (1 − especificidad). Los empates se cortan juntos. El área se calcula por trapecios con la curva completa y se guardan solo `max_puntos` para dibujarla."""
+    orden = np.argsort(-puntaje, kind="stable")
+    p, e = puntaje[orden], etiqueta[orden]
+    vp, fp = np.cumsum(e), np.cumsum(1 - e)
+    fin_de_grupo = np.r_[p[1:] != p[:-1], True]
+    tpr = np.r_[0.0, vp[fin_de_grupo] / vp[-1]]
+    fpr = np.r_[0.0, fp[fin_de_grupo] / fp[-1]]
+    area = float(np.sum(np.diff(fpr) * (tpr[1:] + tpr[:-1]) / 2))
+    if fpr.size > max_puntos:
+        idx = np.unique(np.linspace(0, fpr.size - 1, max_puntos).round().astype(int))
+        fpr, tpr = fpr[idx], tpr[idx]
+    return {"puntos": [{"fpr": float(a), "tpr": float(b)} for a, b in zip(fpr, tpr)], "auc_trapecios": area}
+
+
+def _metricas(prob: np.ndarray, y: np.ndarray, umbral: float = 0.5) -> dict[str, Any]:
+    """Matriz de confusión y métricas al declarar «con bug» cuando la probabilidad llega al umbral."""
+    pred = prob >= umbral
+    vp, fp = int(np.sum(pred & (y == 1))), int(np.sum(pred & (y == 0)))
+    fn, vn = int(np.sum(~pred & (y == 1))), int(np.sum(~pred & (y == 0)))
+    prec = vp / (vp + fp) if vp + fp else None
+    sens = vp / (vp + fn) if vp + fn else None
+    f1 = 2 * prec * sens / (prec + sens) if prec is not None and sens is not None and prec + sens > 0 else None
+    return {"umbral": umbral, "vp": vp, "fp": fp, "fn": fn, "vn": vn, "exactitud": (vp + vn) / y.size, "precision": prec, "sensibilidad": sens, "f1": f1}
+
+
 def _newton(z: np.ndarray, y: np.ndarray, pasos: int = 25) -> tuple[float, float]:
     """Segunda vía: ajusta la misma neurona con el método de Newton–Raphson (mínimos cuadrados reponderados), que llega al óptimo en pocas iteraciones."""
     X = np.column_stack([z, np.ones_like(z)])
@@ -195,6 +222,8 @@ def neurona(mccc: np.ndarray, defecto: np.ndarray, semilla: int = SEMILLA, epoca
         "w": float(w), "b": float(b), "media_log": mu, "sd_log": sd,
         "formula": {"pendiente_log": float(w / sd), "intercepto": float(b - w * mu / sd)},     # logit(P) = intercepto + pendiente·log(1+McCC)
         "historia": historia, "auc_prueba": _auc(prob[tst], y[tst]), "auc_entrenamiento": _auc(prob[ent], y[ent]),
+        "roc": _curva_roc(prob[tst], y[tst]), "umbral": _metricas(prob[tst], y[tst]),
+        "regla_trivial": {"exactitud": float(max(y[tst].mean(), 1 - y[tst].mean()))},       # acertar siempre con la clase más común: la vara que debe superar el modelo
         "ejemplos": [{"mccc": m, "p": p_de(m)} for m in (1, 2, 5, 10, 20, 50, 100, 200)], "tramos": tramos,
         "verificacion": {"w_newton": w_n, "b_newton": b_n, "diferencia_w": abs(w - w_n), "diferencia_b": abs(b - b_n), "coincide": bool(abs(w - w_n) < 1e-3 and abs(b - b_n) < 1e-3)},
     }

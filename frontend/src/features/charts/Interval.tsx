@@ -22,8 +22,8 @@ export function Interval({ label, estimate, low, high, reference, referenceLabel
       <div className="relative h-9" aria-hidden>
         <div className="absolute inset-x-0 top-1/2 h-px" style={{ background: 'var(--grid-strong)' }} />
         <div className="absolute top-[3px] bottom-[3px] w-[2px]" style={{ left: pos(reference), background: 'var(--ink-2)', transform: 'translateX(-1px)' }} />
-        <div className="absolute top-1/2 h-[6px] rounded-full" style={{ left: pos(low), width: `calc(${pos(high)} - ${pos(low)})`, minWidth: 3, background: color, opacity: 0.4, transform: 'translateY(-50%)' }} />
-        <div className="absolute top-1/2 h-[14px] w-[14px] rounded-full border-2" style={{ left: pos(estimate), background: 'var(--paper)', borderColor: color, transform: 'translate(-50%, -50%)' }} />
+        <div className="entra-fade absolute top-1/2 h-[6px] rounded-full" style={{ left: pos(low), width: `calc(${pos(high)} - ${pos(low)})`, minWidth: 3, background: color, opacity: 0.4, transform: 'translateY(-50%)' }} />
+        <div className="entra-fade absolute top-1/2 h-[14px] w-[14px] rounded-full border-2" style={{ left: pos(estimate), background: 'var(--paper)', borderColor: color, transform: 'translate(-50%, -50%)', ['--retraso' as string]: '250ms' }} />
       </div>
       <div className="relative h-4 text-[0.75rem]" aria-hidden>
         <span className="absolute whitespace-nowrap" style={{ left: pos(reference), transform: `translateX(${reference < (a + b) / 2 ? '-10%' : '-90%'})`, color: 'var(--ink-2)' }}>{referenceLabel}</span>

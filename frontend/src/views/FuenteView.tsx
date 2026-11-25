@@ -77,7 +77,7 @@ export function FuenteView() {
         </Panel>
 
         <Panel title="Qué hay que revisar antes de analizar" note="Cada hallazgo es un conteo real de este archivo, comprobado con pandas y DuckDB.">
-          <ul>
+          <ul className="cascada">
             <Finding label="Filas idénticas en las 11 columnas" value={fmtInt(p.exact_duplicates)} act={p.exact_duplicates > 0}
               note="Se pueden eliminar sin perder información." />
             <Finding label="Filas que repiten una ruta" value={fmtInt(p.rows_with_repeated_path)} act={p.rows_with_repeated_path > 0}

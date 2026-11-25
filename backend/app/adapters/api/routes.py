@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from app.core import ada_engine, ada_proceso, analisis_t, cleaning, config, inference, notebook, proceso, tstudent, workspace
+from app.core import ada_engine, ada_proceso, analisis_t, cleaning, config, ia_comparativa, inference, notebook, proceso, tablero, tstudent, workspace
 
 router = APIRouter(prefix="/api")
 
@@ -181,34 +181,22 @@ def tstudent_neurona() -> dict:
     return _t(analisis_t.neurona)
 
 
-# ----------------------------------------------------------------------------- t de Student (sin Ada ni ninguna IA: código propio y corto)
+# ----------------------------------------------------------------------------- tablero estadístico e «IA frente a personas»
 
 
-def _t(fn, *args):
+@router.get("/tablero")
+def tablero_descriptivo() -> dict:
+    """Cifras descriptivas del conjunto limpio (embudo, distribución de McCC, riesgo por tramo, tabla 2×2, nube). La t, la permutación y la neurona se piden aparte."""
+    return _t(tablero.tablero)
+
+
+@router.get("/ia/comparativa")
+def ia_comparativa_datos() -> dict:
+    """Código de personas frente a código generado por IA (resultados agregados de Cotroneo et al., 2025). No depende del conjunto limpio ni de Ada."""
     try:
-        return fn(*args)
+        return ia_comparativa.comparativa()
     except FileNotFoundError as e:
-        raise HTTPException(409, str(e)) from e
-    except ValueError as e:
-        raise HTTPException(422, str(e)) from e
-
-
-@router.get("/tstudent")
-def tstudent_welch(alpha: float = 0.05, alternativa: Literal["two-sided", "greater", "less"] = "two-sided") -> dict:
-    """La t de Welch paso a paso sobre el conjunto limpio y guardado, con la comprobación contra SciPy."""
-    return _t(analisis_t.welch, alpha, alternativa)
-
-
-@router.get("/tstudent/permutacion")
-def tstudent_permutacion(repeticiones: int = 2000, semilla: int = tstudent.SEMILLA) -> dict:
-    """Comprobación sin fórmulas: baraja las etiquetas con bug / sin bug y mira cuántas veces sale una t tan grande."""
-    return _t(analisis_t.permutacion, repeticiones, semilla)
-
-
-@router.get("/tstudent/neurona")
-def tstudent_neurona() -> dict:
-    """Una sola neurona (regresión logística) que estima la probabilidad de bug según la complejidad, comprobada por dos vías."""
-    return _t(analisis_t.neurona)
+        raise HTTPException(404, str(e)) from e
 
 
 class LiveRequest(BaseModel):

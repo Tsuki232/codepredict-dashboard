@@ -25,7 +25,7 @@ const ratio = (a: string, b: string) => {
 // [texto, fondo, mínimo]: 4.5 para texto, 3 para trazos gráficos
 const PAIRS: [string, string, number][] = [
   ['ink', 'bg', 4.5], ['ink-2', 'bg', 4.5], ['muted', 'bg', 4.5],
-  ['serie-1', 'paper', 4.5], ['serie-2', 'paper', 4.5], ['serie-3', 'paper', 4.5],
+  ['serie-1', 'paper', 4.5], ['serie-2', 'paper', 4.5], ['serie-3', 'paper', 4.5], ['serie-4', 'paper', 4.5], ['serie-5', 'paper', 4.5],
   ['ok', 'bg', 4.5], ['warn', 'bg', 4.5], ['bad', 'bg', 4.5],
   ['bg', 'ink', 4.5], // texto de los chips seleccionados
   ['grid-strong', 'paper', 1.1],

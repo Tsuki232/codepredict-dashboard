@@ -1,5 +1,6 @@
 import { fmt, fmtInt, fmtPct } from '../../lib/format'
 import type { Table2x2 as T } from '../../state/types'
+import { AnimatedNumber } from '../../ui/AnimatedNumber'
 
 /**
  * Tabla de contingencia 2×2 con totales y la proporción de defectuosos en cada fila.
@@ -13,7 +14,7 @@ export function Table2x2({ t, expected, caption, cLabel = 'McCC > 10', ncLabel =
   const colD = t.C_D + t.NC_D, colN = t.C_ND + t.NC_ND
   const cell = (v: number, e?: number) => (
     <td className="px-3 py-3 text-right" style={{ background: `color-mix(in srgb, var(--serie-1) ${Math.min(38, Math.round((n ? v / n : 0) * 70))}%, transparent)` }}>
-      <span className="block text-[1.0625rem] font-semibold">{fmtInt(v)}</span>
+      <span className="block text-[1.0625rem] font-semibold"><AnimatedNumber value={v} decimals={0} format={fmtInt} duration={0.9} /></span>
       <span className="small block">{fmtPct(n ? v / n : 0)} del total</span>
       {e != null && <span className="small block">esperado {fmt(e, 1)}</span>}
     </td>

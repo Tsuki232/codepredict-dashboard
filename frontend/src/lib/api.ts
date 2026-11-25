@@ -1,6 +1,7 @@
 import type { Health, InferenceResult, Manifest, NbCell, NbResult, Preview, Profile, Rules } from '../state/types'
 import { announceAdaDown, isAdaDownCode } from './engine'
 import type { Alternativa, TNeurona, TPermutacion, TWelch } from '../features/tstudent/tipos'
+import type { TIa, TTablero } from '../features/tablero/tipos'
 
 /** Motor elegido (Ada o Python local) y estado de Ada, tal como lo informa el servidor del panel. */
 export interface EngineInfo { motor: 'ada' | 'python'; proceso_en_ada_remota: boolean; ada: Health['ada'] }
@@ -54,6 +55,9 @@ export const api = {
   tstudent: (alpha: number, alternativa: Alternativa) => call<TWelch>(`/api/tstudent?alpha=${alpha}&alternativa=${alternativa}`),
   permutacion: (repeticiones: number, semilla: number) => call<TPermutacion>(`/api/tstudent/permutacion?repeticiones=${repeticiones}&semilla=${semilla}`, undefined, 180_000),
   neurona: () => call<TNeurona>('/api/tstudent/neurona', undefined, 180_000),
+  // Tablero estadístico: cifras descriptivas del conjunto limpio e «IA frente a personas» (resultados agregados de Cotroneo et al., 2025).
+  tablero: () => call<TTablero>('/api/tablero', undefined, 60_000),
+  iaComparativa: () => call<TIa>('/api/ia/comparativa', undefined, 20_000),
   inference: (alpha: number, alternative: string) => post<InferenceResult>('/api/inference', { alpha, alternative }),
   inferenceLive: (rules: Rules, alpha: number, alternative: string) => post<InferenceResult>('/api/inference/live', { rules, alpha, alternative }),
   nbCells: () => call<{ cells: NbCell[]; done: Record<string, number>; count: number }>('/api/notebook/cells', undefined, 8000),

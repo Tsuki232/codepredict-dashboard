@@ -1,0 +1,1172 @@
+{
+ "meta": {
+  "titulo": "Human-Written vs. AI-Generated Code: A Large-Scale Study of Defects, Vulnerabilities, and Complexity",
+  "autores": [
+   "Domenico Cotroneo",
+   "Cristina Improta",
+   "Pietro Liguori"
+  ],
+  "anio": 2025,
+  "congreso": "ISSRE 2025",
+  "arxiv": "2508.21634",
+  "zenodo_artefacto": "10.5281/zenodo.16853222",
+  "zenodo_datos_completos": "https://zenodo.org/records/15423067",
+  "licencia": "CC BY 4.0",
+  "md5_zip": "52e11ee0b6c5aefebab5c375d49231e4",
+  "descargado": "2026-11-23",
+  "fuentes": {
+   "human": "Personas (GitHub)",
+   "chatgpt": "ChatGPT (gpt-3.5-turbo)",
+   "dsc": "DeepSeek-Coder 33B",
+   "qwen": "Qwen2.5-Coder 32B"
+  },
+  "herramientas": {
+   "defectos_java": "PMD",
+   "defectos_python": "Pylint",
+   "vulnerabilidades": "Semgrep",
+   "complejidad": "Lizard (CCN y NLOC)"
+  },
+  "nota": "Los defectos son alertas de análisis estático agrupadas por tipo de defecto ODC, no errores reportados. Cada muestra tiene las cuatro versiones (personas y tres IA)."
+ },
+ "lenguajes": {
+  "java": {
+   "muestras": 221795,
+   "repositorios": 4296,
+   "tokens_docstring": 24.86,
+   "fuentes": {
+    "human": {
+     "defectos": {
+      "total": 202129,
+      "muestras_defectuosas": 76049,
+      "por_muestra": 2.66,
+      "odc": {
+       "Algorithm": 96418,
+       "Checking": 54961,
+       "Assignment": 33652,
+       "Timing": 9678,
+       "Function/Class/Object": 6082,
+       "Interface": 1338
+      },
+      "top_reglas": [
+       {
+        "regla": "CyclomaticComplexity",
+        "n": 15435
+       },
+       {
+        "regla": "GuardLogStatement",
+        "n": 14458
+       },
+       {
+        "regla": "AvoidInstantiatingObjectsInLoops",
+        "n": 14351
+       },
+       {
+        "regla": "CognitiveComplexity",
+        "n": 13065
+       },
+       {
+        "regla": "AvoidCatchingGenericException",
+        "n": 9749
+       },
+       {
+        "regla": "UnusedAssignment",
+        "n": 9039
+       },
+       {
+        "regla": "NullAssignment",
+        "n": 7336
+       },
+       {
+        "regla": "AvoidReassigningParameters",
+        "n": 7101
+       },
+       {
+        "regla": "LiteralsFirstInComparisons",
+        "n": 6911
+       },
+       {
+        "regla": "NPathComplexity",
+        "n": 6066
+       }
+      ]
+     },
+     "vulnerabilidades": {
+      "funciones": 6660,
+      "problemas": 11677,
+      "cwe_distintos": 42,
+      "top_cwe": [
+       {
+        "cwe": "CWE-532",
+        "nombre": null,
+        "n": 3736
+       },
+       {
+        "cwe": "CWE-489",
+        "nombre": "Active Debug Code",
+        "n": 1948
+       },
+       {
+        "cwe": "CWE-89",
+        "nombre": null,
+        "n": 1208
+       },
+       {
+        "cwe": "CWE-798",
+        "nombre": null,
+        "n": 784
+       },
+       {
+        "cwe": "CWE-470",
+        "nombre": "Use of Externally-Controlled Input to Select Classes or Code ('Unsafe Reflection')",
+        "n": 741
+       },
+       {
+        "cwe": "CWE-209",
+        "nombre": null,
+        "n": 582
+       },
+       {
+        "cwe": "CWE-321",
+        "nombre": "USE OF HARD-CODED CRYPTOGRAPHIC KEY",
+        "n": 541
+       },
+       {
+        "cwe": "CWE-611",
+        "nombre": "Improper Restriction of XML External Entity Reference",
+        "n": 297
+       },
+       {
+        "cwe": "CWE-502",
+        "nombre": "Deserialization of Untrusted Data",
+        "n": 247
+       },
+       {
+        "cwe": "CWE-20",
+        "nombre": null,
+        "n": 245
+       }
+      ]
+     },
+     "complejidad": {
+      "funciones": 232828,
+      "NLOC": {
+       "media": 13.38,
+       "min": 1,
+       "max": 1619,
+       "sd": 18.17
+      },
+      "CCN": {
+       "media": 3.48,
+       "min": 1,
+       "max": 771,
+       "sd": 5.59
+      },
+      "TOKEN_COUNT": {
+       "media": 119.66,
+       "min": 5,
+       "max": 22080,
+       "sd": 195.31
+      },
+      "FUNCTION_NAME_LENGTH": {
+       "media": 13.98,
+       "min": 1,
+       "max": 1087,
+       "sd": 8.04
+      }
+     }
+    },
+    "chatgpt": {
+     "defectos": {
+      "total": 161056,
+      "muestras_defectuosas": 78241,
+      "por_muestra": 2.06,
+      "odc": {
+       "Algorithm": 51688,
+       "Checking": 43411,
+       "Assignment": 30234,
+       "Function/Class/Object": 21218,
+       "Interface": 7725,
+       "Timing": 6780
+      },
+      "top_reglas": [
+       {
+        "regla": "SystemPrintln",
+        "n": 10428
+       },
+       {
+        "regla": "AvoidInstantiatingObjectsInLoops",
+        "n": 9430
+       },
+       {
+        "regla": "UseVarargs",
+        "n": 9124
+       },
+       {
+        "regla": "LiteralsFirstInComparisons",
+        "n": 7970
+       },
+       {
+        "regla": "UnusedLocalVariable",
+        "n": 6965
+       },
+       {
+        "regla": "AvoidCatchingGenericException",
+        "n": 6738
+       },
+       {
+        "regla": "UnusedFormalParameter",
+        "n": 6162
+       },
+       {
+        "regla": "AppendCharacterWithChar",
+        "n": 5473
+       },
+       {
+        "regla": "UnusedAssignment",
+        "n": 5456
+       },
+       {
+        "regla": "CyclomaticComplexity",
+        "n": 4594
+       }
+      ]
+     },
+     "vulnerabilidades": {
+      "funciones": 18144,
+      "problemas": 29807,
+      "cwe_distintos": 49,
+      "top_cwe": [
+       {
+        "cwe": "CWE-532",
+        "nombre": null,
+        "n": 6915
+       },
+       {
+        "cwe": "CWE-489",
+        "nombre": "Active Debug Code",
+        "n": 5659
+       },
+       {
+        "cwe": "CWE-22",
+        "nombre": null,
+        "n": 2886
+       },
+       {
+        "cwe": "CWE-89",
+        "nombre": null,
+        "n": 1874
+       },
+       {
+        "cwe": "CWE-798",
+        "nombre": "Use of Hard-coded Credentials",
+        "n": 1737
+       },
+       {
+        "cwe": "CWE-611",
+        "nombre": "Improper Restriction of XML External Entity Reference",
+        "n": 1480
+       },
+       {
+        "cwe": "CWE-209",
+        "nombre": null,
+        "n": 1238
+       },
+       {
+        "cwe": "CWE-470",
+        "nombre": "Use of Externally-Controlled Input to Select Classes or Code ('Unsafe Reflection')",
+        "n": 1228
+       },
+       {
+        "cwe": "CWE-502",
+        "nombre": "Deserialization of Untrusted Data",
+        "n": 1064
+       },
+       {
+        "cwe": "CWE-321",
+        "nombre": "USE OF HARD-CODED CRYPTOGRAPHIC KEY",
+        "n": 989
+       }
+      ]
+     },
+     "complejidad": {
+      "funciones": 257569,
+      "NLOC": {
+       "media": 8.42,
+       "min": 1,
+       "max": 344,
+       "sd": 7.09
+      },
+      "CCN": {
+       "media": 2.35,
+       "min": 1,
+       "max": 172,
+       "sd": 2.31
+      },
+      "TOKEN_COUNT": {
+       "media": 76.51,
+       "min": 1,
+       "max": 2896,
+       "sd": 72.18
+      },
+      "FUNCTION_NAME_LENGTH": {
+       "media": 18.92,
+       "min": 1,
+       "max": 616,
+       "sd": 8.61
+      }
+     }
+    },
+    "dsc": {
+     "defectos": {
+      "total": 242437,
+      "muestras_defectuosas": 155077,
+      "por_muestra": 1.56,
+      "odc": {
+       "Function/Class/Object": 79724,
+       "Checking": 74252,
+       "Algorithm": 29023,
+       "Assignment": 29020,
+       "Timing": 16017,
+       "Interface": 14401
+      },
+      "top_reglas": [
+       {
+        "regla": "ImmutableField",
+        "n": 41669
+       },
+       {
+        "regla": "SystemPrintln",
+        "n": 37986
+       },
+       {
+        "regla": "UnusedPrivateField",
+        "n": 15793
+       },
+       {
+        "regla": "AvoidPrintStackTrace",
+        "n": 14267
+       },
+       {
+        "regla": "UnusedFormalParameter",
+        "n": 8910
+       },
+       {
+        "regla": "UnusedLocalVariable",
+        "n": 8518
+       },
+       {
+        "regla": "CloseResource",
+        "n": 8404
+       },
+       {
+        "regla": "AvoidCatchingGenericException",
+        "n": 7392
+       },
+       {
+        "regla": "UseConcurrentHashMap",
+        "n": 6580
+       },
+       {
+        "regla": "LooseCoupling",
+        "n": 6159
+       }
+      ]
+     },
+     "vulnerabilidades": {
+      "funciones": 43386,
+      "problemas": 76678,
+      "cwe_distintos": 51,
+      "top_cwe": [
+       {
+        "cwe": "CWE-532",
+        "nombre": null,
+        "n": 30031
+       },
+       {
+        "cwe": "CWE-489",
+        "nombre": "Active Debug Code",
+        "n": 17533
+       },
+       {
+        "cwe": "CWE-798",
+        "nombre": "Use of Hard-coded Credentials",
+        "n": 5199
+       },
+       {
+        "cwe": "CWE-209",
+        "nombre": null,
+        "n": 4549
+       },
+       {
+        "cwe": "CWE-22",
+        "nombre": null,
+        "n": 3738
+       },
+       {
+        "cwe": "CWE-89",
+        "nombre": null,
+        "n": 2731
+       },
+       {
+        "cwe": "CWE-611",
+        "nombre": "Improper Restriction of XML External Entity Reference",
+        "n": 1960
+       },
+       {
+        "cwe": "CWE-321",
+        "nombre": "USE OF HARD-CODED CRYPTOGRAPHIC KEY",
+        "n": 1757
+       },
+       {
+        "cwe": "CWE-330",
+        "nombre": null,
+        "n": 1584
+       },
+       {
+        "cwe": "CWE-319",
+        "nombre": "CLEARTEXT TRANSMISSION OF SENSITIVE INFORMATION",
+        "n": 1532
+       }
+      ]
+     },
+     "complejidad": {
+      "funciones": 292007,
+      "NLOC": {
+       "media": 6.7,
+       "min": 1,
+       "max": 54,
+       "sd": 4.29
+      },
+      "CCN": {
+       "media": 1.83,
+       "min": 1,
+       "max": 40,
+       "sd": 1.32
+      },
+      "TOKEN_COUNT": {
+       "media": 59.6,
+       "min": 0,
+       "max": 317,
+       "sd": 43.53
+      },
+      "FUNCTION_NAME_LENGTH": {
+       "media": 19.32,
+       "min": 1,
+       "max": 126,
+       "sd": 9.75
+      }
+     }
+    },
+    "qwen": {
+     "defectos": {
+      "total": 123180,
+      "muestras_defectuosas": 60389,
+      "por_muestra": 2.04,
+      "odc": {
+       "Assignment": 36100,
+       "Checking": 34015,
+       "Algorithm": 33380,
+       "Function/Class/Object": 11344,
+       "Timing": 7392,
+       "Interface": 949
+      },
+      "top_reglas": [
+       {
+        "regla": "UnusedFormalParameter",
+        "n": 24660
+       },
+       {
+        "regla": "SystemPrintln",
+        "n": 13329
+       },
+       {
+        "regla": "UseVarargs",
+        "n": 5826
+       },
+       {
+        "regla": "AppendCharacterWithChar",
+        "n": 5715
+       },
+       {
+        "regla": "AvoidInstantiatingObjectsInLoops",
+        "n": 5577
+       },
+       {
+        "regla": "SignatureDeclareThrowsException",
+        "n": 5113
+       },
+       {
+        "regla": "AvoidThrowingRawExceptionTypes",
+        "n": 4237
+       },
+       {
+        "regla": "AvoidSynchronizedAtMethodLevel",
+        "n": 4049
+       },
+       {
+        "regla": "LiteralsFirstInComparisons",
+        "n": 3939
+       },
+       {
+        "regla": "AvoidCatchingGenericException",
+        "n": 3938
+       }
+      ]
+     },
+     "vulnerabilidades": {
+      "funciones": 13620,
+      "problemas": 21301,
+      "cwe_distintos": 41,
+      "top_cwe": [
+       {
+        "cwe": "CWE-532",
+        "nombre": null,
+        "n": 9271
+       },
+       {
+        "cwe": "CWE-489",
+        "nombre": "Active Debug Code",
+        "n": 4680
+       },
+       {
+        "cwe": "CWE-209",
+        "nombre": null,
+        "n": 1001
+       },
+       {
+        "cwe": "CWE-470",
+        "nombre": "Use of Externally-Controlled Input to Select Classes or Code ('Unsafe Reflection')",
+        "n": 914
+       },
+       {
+        "cwe": "CWE-89",
+        "nombre": null,
+        "n": 903
+       },
+       {
+        "cwe": "CWE-798",
+        "nombre": null,
+        "n": 901
+       },
+       {
+        "cwe": "CWE-611",
+        "nombre": "Improper Restriction of XML External Entity Reference",
+        "n": 659
+       },
+       {
+        "cwe": "CWE-502",
+        "nombre": "Deserialization of Untrusted Data",
+        "n": 458
+       },
+       {
+        "cwe": "CWE-327",
+        "nombre": "Use of a Broken or Risky Cryptographic Algorithm",
+        "n": 404
+       },
+       {
+        "cwe": "CWE-321",
+        "nombre": "USE OF HARD-CODED CRYPTOGRAPHIC KEY",
+        "n": 367
+       }
+      ]
+     },
+     "complejidad": {
+      "funciones": 304481,
+      "NLOC": {
+       "media": 6.14,
+       "min": 1,
+       "max": 79,
+       "sd": 5.58
+      },
+      "CCN": {
+       "media": 1.9,
+       "min": 1,
+       "max": 41,
+       "sd": 1.74
+      },
+      "TOKEN_COUNT": {
+       "media": 61.43,
+       "min": 1,
+       "max": 482,
+       "sd": 60.01
+      },
+      "FUNCTION_NAME_LENGTH": {
+       "media": 13.85,
+       "min": 1,
+       "max": 126,
+       "sd": 7.77
+      }
+     }
+    }
+   }
+  },
+  "python": {
+   "muestras": 285249,
+   "repositorios": 12632,
+   "tokens_docstring": 25.73,
+   "fuentes": {
+    "human": {
+     "defectos": {
+      "total": 429247,
+      "muestras_defectuosas": 158221,
+      "por_muestra": 2.71,
+      "odc": {
+       "Interface": 243492,
+       "Algorithm": 88769,
+       "Assignment": 63282,
+       "Checking": 29561,
+       "Function/Class/Object": 4143
+      },
+      "top_reglas": [
+       {
+        "regla": "protected-access",
+        "n": 202259
+       },
+       {
+        "regla": "unused-argument",
+        "n": 26587
+       },
+       {
+        "regla": "no-else-return",
+        "n": 22619
+       },
+       {
+        "regla": "unused-variable",
+        "n": 13241
+       },
+       {
+        "regla": "raise-missing-from",
+        "n": 10108
+       },
+       {
+        "regla": "too-many-arguments",
+        "n": 9269
+       },
+       {
+        "regla": "too-many-positional-arguments",
+        "n": 9196
+       },
+       {
+        "regla": "too-many-locals",
+        "n": 8275
+       },
+       {
+        "regla": "unspecified-encoding",
+        "n": 8021
+       },
+       {
+        "regla": "redefined-builtin",
+        "n": 7960
+       }
+      ]
+     },
+     "vulnerabilidades": {
+      "funciones": 15835,
+      "problemas": 25678,
+      "cwe_distintos": 45,
+      "top_cwe": [
+       {
+        "cwe": "CWE-754",
+        "nombre": null,
+        "n": 13157
+       },
+       {
+        "cwe": "CWE-78",
+        "nombre": null,
+        "n": 2243
+       },
+       {
+        "cwe": "CWE-400",
+        "nombre": null,
+        "n": 1631
+       },
+       {
+        "cwe": "CWE-502",
+        "nombre": null,
+        "n": 1349
+       },
+       {
+        "cwe": "CWE-330",
+        "nombre": null,
+        "n": 1272
+       },
+       {
+        "cwe": "CWE-89",
+        "nombre": "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+        "n": 1152
+       },
+       {
+        "cwe": "CWE-327",
+        "nombre": null,
+        "n": 1097
+       },
+       {
+        "cwe": "CWE-95",
+        "nombre": "Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')",
+        "n": 1065
+       },
+       {
+        "cwe": "CWE-939",
+        "nombre": null,
+        "n": 370
+       },
+       {
+        "cwe": "CWE-706",
+        "nombre": "Use of Incorrectly-Resolved Name or Reference",
+        "n": 370
+       }
+      ]
+     },
+     "complejidad": {
+      "funciones": 302677,
+      "NLOC": {
+       "media": 12.72,
+       "min": 1,
+       "max": 1340,
+       "sd": 15.76
+      },
+      "CCN": {
+       "media": 3.97,
+       "min": 1,
+       "max": 535,
+       "sd": 4.68
+      },
+      "TOKEN_COUNT": {
+       "media": 142.45,
+       "min": 7,
+       "max": 24731,
+       "sd": 206.38
+      },
+      "FUNCTION_NAME_LENGTH": {
+       "media": 14.16,
+       "min": 1,
+       "max": 210,
+       "sd": 8.12
+      }
+     }
+    },
+    "chatgpt": {
+     "defectos": {
+      "total": 185110,
+      "muestras_defectuosas": 110528,
+      "por_muestra": 1.67,
+      "odc": {
+       "Assignment": 55839,
+       "Algorithm": 51958,
+       "Interface": 42061,
+       "Checking": 26115,
+       "Function/Class/Object": 9121,
+       "Timing": 16
+      },
+      "top_reglas": [
+       {
+        "regla": "unused-argument",
+        "n": 32992
+       },
+       {
+        "regla": "no-else-return",
+        "n": 27446
+       },
+       {
+        "regla": "unused-variable",
+        "n": 14408
+       },
+       {
+        "regla": "unspecified-encoding",
+        "n": 14312
+       },
+       {
+        "regla": "protected-access",
+        "n": 7108
+       },
+       {
+        "regla": "too-few-public-methods",
+        "n": 6465
+       },
+       {
+        "regla": "missing-timeout",
+        "n": 6348
+       },
+       {
+        "regla": "no-member",
+        "n": 6032
+       },
+       {
+        "regla": "raise-missing-from",
+        "n": 5509
+       },
+       {
+        "regla": "redefined-builtin",
+        "n": 3860
+       }
+      ]
+     },
+     "vulnerabilidades": {
+      "funciones": 22864,
+      "problemas": 40035,
+      "cwe_distintos": 45,
+      "top_cwe": [
+       {
+        "cwe": "CWE-78",
+        "nombre": null,
+        "n": 13419
+       },
+       {
+        "cwe": "CWE-400",
+        "nombre": null,
+        "n": 6887
+       },
+       {
+        "cwe": "CWE-611",
+        "nombre": "IMPROPER RESTRICTION OF XML EXTERNAL ENTITY REFERENCE",
+        "n": 4587
+       },
+       {
+        "cwe": "CWE-330",
+        "nombre": null,
+        "n": 2045
+       },
+       {
+        "cwe": "CWE-502",
+        "nombre": "Deserialization of Untrusted Data",
+        "n": 1638
+       },
+       {
+        "cwe": "CWE-327",
+        "nombre": null,
+        "n": 1626
+       },
+       {
+        "cwe": "CWE-754",
+        "nombre": null,
+        "n": 1539
+       },
+       {
+        "cwe": "CWE-939",
+        "nombre": null,
+        "n": 1518
+       },
+       {
+        "cwe": "CWE-95",
+        "nombre": "Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')",
+        "n": 1462
+       },
+       {
+        "cwe": "CWE-89",
+        "nombre": "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+        "n": 1294
+       }
+      ]
+     },
+     "complejidad": {
+      "funciones": 309863,
+      "NLOC": {
+       "media": 6.89,
+       "min": 1,
+       "max": 283,
+       "sd": 5.95
+      },
+      "CCN": {
+       "media": 2.47,
+       "min": 1,
+       "max": 56,
+       "sd": 2.16
+      },
+      "TOKEN_COUNT": {
+       "media": 79.33,
+       "min": 4,
+       "max": 3996,
+       "sd": 78.45
+      },
+      "FUNCTION_NAME_LENGTH": {
+       "media": 17.56,
+       "min": 1,
+       "max": 147,
+       "sd": 7.16
+      }
+     }
+    },
+    "dsc": {
+     "defectos": {
+      "total": 319643,
+      "muestras_defectuosas": 173899,
+      "por_muestra": 1.84,
+      "odc": {
+       "Assignment": 128101,
+       "Function/Class/Object": 78925,
+       "Algorithm": 51178,
+       "Interface": 36751,
+       "Checking": 24688
+      },
+      "top_reglas": [
+       {
+        "regla": "unused-argument",
+        "n": 111703
+       },
+       {
+        "regla": "too-few-public-methods",
+        "n": 64279
+       },
+       {
+        "regla": "no-else-return",
+        "n": 33062
+       },
+       {
+        "regla": "unspecified-encoding",
+        "n": 13112
+       },
+       {
+        "regla": "redefined-outer-name",
+        "n": 12631
+       },
+       {
+        "regla": "unused-variable",
+        "n": 8065
+       },
+       {
+        "regla": "missing-timeout",
+        "n": 8054
+       },
+       {
+        "regla": "redefined-builtin",
+        "n": 6020
+       },
+       {
+        "regla": "protected-access",
+        "n": 5304
+       },
+       {
+        "regla": "no-member",
+        "n": 4952
+       }
+      ]
+     },
+     "vulnerabilidades": {
+      "funciones": 22878,
+      "problemas": 39982,
+      "cwe_distintos": 43,
+      "top_cwe": [
+       {
+        "cwe": "CWE-78",
+        "nombre": null,
+        "n": 10908
+       },
+       {
+        "cwe": "CWE-400",
+        "nombre": null,
+        "n": 7987
+       },
+       {
+        "cwe": "CWE-611",
+        "nombre": "IMPROPER RESTRICTION OF XML EXTERNAL ENTITY REFERENCE",
+        "n": 6372
+       },
+       {
+        "cwe": "CWE-319",
+        "nombre": "Cleartext Transmission of Sensitive Information",
+        "n": 1928
+       },
+       {
+        "cwe": "CWE-330",
+        "nombre": null,
+        "n": 1853
+       },
+       {
+        "cwe": "CWE-502",
+        "nombre": "Deserialization of Untrusted Data",
+        "n": 1692
+       },
+       {
+        "cwe": "CWE-327",
+        "nombre": null,
+        "n": 1668
+       },
+       {
+        "cwe": "CWE-89",
+        "nombre": "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+        "n": 1305
+       },
+       {
+        "cwe": "CWE-489",
+        "nombre": null,
+        "n": 1038
+       },
+       {
+        "cwe": "CWE-706",
+        "nombre": "Use of Incorrectly-Resolved Name or Reference",
+        "n": 765
+       }
+      ]
+     },
+     "complejidad": {
+      "funciones": 357896,
+      "NLOC": {
+       "media": 5.16,
+       "min": 1,
+       "max": 50,
+       "sd": 3.52
+      },
+      "CCN": {
+       "media": 2.0,
+       "min": 1,
+       "max": 22,
+       "sd": 1.45
+      },
+      "TOKEN_COUNT": {
+       "media": 68.37,
+       "min": 5,
+       "max": 341,
+       "sd": 50.95
+      },
+      "FUNCTION_NAME_LENGTH": {
+       "media": 12.51,
+       "min": 1,
+       "max": 150,
+       "sd": 6.77
+      }
+     }
+    },
+    "qwen": {
+     "defectos": {
+      "total": 574916,
+      "muestras_defectuosas": 178225,
+      "por_muestra": 3.23,
+      "odc": {
+       "Assignment": 249108,
+       "Interface": 142927,
+       "Algorithm": 87528,
+       "Function/Class/Object": 72501,
+       "Checking": 22852
+      },
+      "top_reglas": [
+       {
+        "regla": "unused-argument",
+        "n": 213264
+       },
+       {
+        "regla": "protected-access",
+        "n": 105770
+       },
+       {
+        "regla": "redefined-outer-name",
+        "n": 57252
+       },
+       {
+        "regla": "no-else-return",
+        "n": 34938
+       },
+       {
+        "regla": "unnecessary-pass",
+        "n": 31081
+       },
+       {
+        "regla": "unused-variable",
+        "n": 22749
+       },
+       {
+        "regla": "unspecified-encoding",
+        "n": 15280
+       },
+       {
+        "regla": "too-few-public-methods",
+        "n": 10182
+       },
+       {
+        "regla": "redefined-builtin",
+        "n": 8365
+       },
+       {
+        "regla": "raise-missing-from",
+        "n": 6348
+       }
+      ]
+     },
+     "vulnerabilidades": {
+      "funciones": 16316,
+      "problemas": 34250,
+      "cwe_distintos": 45,
+      "top_cwe": [
+       {
+        "cwe": "CWE-754",
+        "nombre": null,
+        "n": 8214
+       },
+       {
+        "cwe": "CWE-78",
+        "nombre": null,
+        "n": 7318
+       },
+       {
+        "cwe": "CWE-400",
+        "nombre": null,
+        "n": 4857
+       },
+       {
+        "cwe": "CWE-611",
+        "nombre": "IMPROPER RESTRICTION OF XML EXTERNAL ENTITY REFERENCE",
+        "n": 3521
+       },
+       {
+        "cwe": "CWE-330",
+        "nombre": null,
+        "n": 1889
+       },
+       {
+        "cwe": "CWE-502",
+        "nombre": null,
+        "n": 1762
+       },
+       {
+        "cwe": "CWE-89",
+        "nombre": "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+        "n": 1179
+       },
+       {
+        "cwe": "CWE-327",
+        "nombre": null,
+        "n": 1148
+       },
+       {
+        "cwe": "CWE-95",
+        "nombre": "Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')",
+        "n": 1076
+       },
+       {
+        "cwe": "CWE-706",
+        "nombre": "Use of Incorrectly-Resolved Name or Reference",
+        "n": 792
+       }
+      ]
+     },
+     "complejidad": {
+      "funciones": 514971,
+      "NLOC": {
+       "media": 4.47,
+       "min": 1,
+       "max": 166,
+       "sd": 4.74
+      },
+      "CCN": {
+       "media": 1.84,
+       "min": 1,
+       "max": 51,
+       "sd": 1.78
+      },
+      "TOKEN_COUNT": {
+       "media": 58.68,
+       "min": 3,
+       "max": 900,
+       "sd": 69.33
+      },
+      "FUNCTION_NAME_LENGTH": {
+       "media": 13.95,
+       "min": 1,
+       "max": 141,
+       "sd": 7.32
+      }
+     }
+    }
+   }
+  }
+ }
+}

@@ -16,6 +16,7 @@ Está construido sobre la plantilla *Estadística Data* (sistema de diseño «ho
 | **Cuaderno en vivo** | Estilo Colab: 14 celdas (cargar, 6 reglas, tabla 2×2, guardar, Welch, sensibilidad, χ², dos proporciones, Bayes) que se ejecutan una a una o todas desde cero. Cada celda muestra **el código real que ejecuta**, su salida, el contador `[n]`, el tiempo real y ejemplos de las filas que quitó. Reejecutar una celda deja desactualizadas las siguientes | Es el mismo código y las mismas verificaciones del panel; sin retardos artificiales |
 | **Informe en vivo** | Un informe completo (datos, limpieza con tablas y gráficas, tabla 2×2, Welch, sensibilidad, χ², proporciones, Bayes, límites, declaración de IA y referencias) que **se recalcula solo** al cambiar las políticas de limpieza, α o la hipótesis alternativa, y se baja como **PDF** (botón «Descargar PDF» → diálogo de impresión → «Guardar como PDF»). Anexos descargables: CSV limpio, manifiesto y resultados en JSON | El texto sale de las cifras en pantalla (pruebas unitarias); la inferencia en vivo se calcula en Python (SciPy) y coincide con la del conjunto guardado (prueba) |
 | **Inferencia** | **Solo la t de Student**, hecha para exponerla (ver abajo) | Fórmula a mano ↔ SciPy, prueba de permutación y neurona contrastada con Newton–Raphson |
+| **Tablero estadístico** | Un solo tablero animado con 11 escenas (pregunta, limpieza, complejidad, riesgo por tramo, probabilidades y Bayes, t de Welch, permutación, neurona con curva ROC, **código de personas frente a código de IA**, conclusiones y límites) y un **modo película** con subtítulos | Cada cifra sale de la API y se prueba a mano; la comparación con IA se contrasta contra los `.txt` originales del artefacto |
 
 ### La vista Inferencia (t de Student, para exponer)
 
@@ -29,6 +30,19 @@ Es la misma prueba del informe entregado (**t de Welch**: una t de Student para 
 6. **Supuestos y límites** (normalidad de la media por el teorema central del límite, independencia, «significativo» no es «importante», asociación no es causa, datos anteriores a la IA generativa).
 
 Rutas: `GET /api/tstudent` (α y alternativa), `/api/tstudent/permutacion`, `/api/tstudent/neurona`. Todo se calcula con NumPy y SciPy; las respuestas se guardan en memoria por huella SHA-256 del conjunto limpio. Requieren que la limpieza esté guardada.
+
+### El Tablero estadístico y «IA frente a personas»
+
+Una sola pantalla, pensada para presentar, con las cifras del proyecto y la comparación con código generado por IA. Cada gráfica se anima al llegar a ella (se dibuja como función del tiempo de su escena, así que se puede repetir, pausar o saltar) y el **modo película** del final las reproduce una tras otra con subtítulos escritos con las cifras reales: empieza en pausa, tiene reproducir/pausar, escena anterior y siguiente, barra de tiempo con una marca por escena, velocidad 0,5×–2× y «Esc» para salir. Con «reducir movimiento» del sistema operativo las escenas se ven completas y la película solo cambia de escena.
+
+- **Rutas nuevas:** `GET /api/tablero` (embudo, distribución de McCC por grupo, riesgo por tramo con intervalo de Wilson, tabla 2×2 con P(D|C), razón de riesgo, razón de momios y Bayes, Spearman, nube de puntos) y `GET /api/ia/comparativa`. La neurona ahora también devuelve la **curva ROC** (comprobada contra scikit-learn), la matriz de confusión con umbral 0,5 y la **exactitud de la regla trivial**, para ver si el modelo supera a «decir siempre sin bug».
+- **IA frente a personas:** resultados *agregados* del artefacto de Cotroneo, Improta y Liguori (2025; Zenodo 10.5281/zenodo.16853222, CC BY 4.0): funciones de personas (GitHub) y de ChatGPT, DeepSeek-Coder 33B y Qwen2.5-Coder 32B, en Java (PMD) y Python (Pylint), con alertas de seguridad (Semgrep) y complejidad (Lizard). `scripts/preparar_datos_ia.py` lee el zip original (comprueba su MD5), y `backend/app/datos/ia_cotroneo2025.json` guarda solo las cifras. El zip (68 MB) está en `data/external/` y **no se sube a git**.
+- **Lo que NO dice:** «defecto» aquí es una alerta de análisis estático, no un error reportado; los 507 044 ejemplos completos no se descargaron, así que se comparan tasas con su intervalo de confianza, **no se calcula ningún valor p** entre personas e IA (las cuatro versiones de cada función están emparejadas); Java y Python usan herramientas distintas y no se comparan entre sí; y la base de IA y la base principal miden cosas distintas y no se mezclan.
+- **Presentar:** el botón «Presentar» (cabecera, franja fija o barra de la película) abre el tablero a pantalla completa, **una escena a la vez y más grande**, con su subtítulo. Nada avanza solo: cada escena se anima, se queda completa y espera. Teclado: ← → (o Espacio) cambian de escena, `R` la repite, `Inicio`/`Fin` saltan, `F` pone el navegador a pantalla completa y `Esc` sale; en el celular se desliza el dedo. Lo de atrás queda inerte (no recibe foco ni lo leen los lectores de pantalla) y al salir la página vuelve a la escena donde se quedó.
+- **Cabecera y cifras fijas:** la pregunta del proyecto en grande, con las cinco cifras que la contestan; al bajar, esas mismas cifras quedan en una franja bajo la barra superior.
+- **Interacción:** al pasar el cursor (o con ← → tras entrar con Tab) las gráficas de complejidad, riesgo y permutación muestran una cruz y un cuadro con las cifras exactas. En la comparación con IA, tocar el nombre de una fuente la **resalta en todas las gráficas** y al cambiar entre Java y Python las barras se transforman en vez de repetirse.
+- **Carga:** mientras se calcula el tablero (y al arrancar o cambiar de vista) se muestra la silueta de lo que viene, con un brillo suave, en vez de un texto suelto.
+- **Movimiento:** una sola fuente de curvas, resortes y tiempos (`frontend/src/motion/`); entradas con opacidad + desplazamiento + escala, escalonadas; las salidas son más rápidas; fondo de papel milimetrado con resplandores lentos que se detiene con «reducir movimiento»; todo con `transform` y `opacity`.
 
 ### Reglas de limpieza (bitácora, Paso 4)
 
@@ -97,8 +111,8 @@ Desarrollo con recarga: `uvicorn app.main:app --reload --app-dir backend` y, en 
 ### Pruebas
 
 ```powershell
-cd backend;  ..\..\Ada\.venv\Scripts\python.exe -m pytest -q     # 96 pruebas (cuaderno, inferencia en vivo, t de Student, CSV real, motor Python local contra Ada y Ada remota por la puerta de enlace real)
-cd frontend; npm test                                              # 55 pruebas (contraste de colores, cifras, distribución t contra SciPy, texto del informe y aviso «Ada no disponible»)
+cd backend;  ..\..\Ada\.venv\Scripts\python.exe -m pytest -q     # 121 pruebas (cuaderno, inferencia en vivo, t de Student, tablero, IA frente a personas, CSV real, motor Python local contra Ada y Ada remota por la puerta de enlace real)
+cd frontend; npm test                                              # 91 pruebas (contraste de colores, cifras, distribución t contra SciPy, texto del informe, aviso «Ada no disponible», curvas de tiempo, reloj de la película y modo presentación, bandas bajo el cursor)
 # puerta de enlace de Ada (en la raíz):  ..\Ada\.venv\Scripts\python.exe -m pytest -q ada_gateway/tests    # 68 pruebas
 cd ada_gateway\monitor; node --test                                # 8 pruebas del panel «Ada en vivo»
 ```
@@ -112,12 +126,17 @@ backend/app/core/cleaning.py      reglas de limpieza, doble verificación pandas
 backend/app/core/workspace.py     guardado del limpio + manifest + huellas + auditoría de Ada
 backend/app/core/tstudent.py      t de Welch, permutación y neurona (NumPy y SciPy, sin Ada)
 backend/app/core/analisis_t.py    t de Student sobre el conjunto limpio guardado (con caché por huella)
+backend/app/core/tablero.py       cifras descriptivas del tablero (embudo, distribución, riesgo por tramo, tabla 2×2, Bayes)
+backend/app/core/ia_comparativa.py  personas frente a IA: tasas con IC de Wilson, razones y d de Cohen (datos agregados, sin valores p)
+backend/app/datos/ia_cotroneo2025.json  cifras extraídas del artefacto de Cotroneo et al. (2025) con scripts/preparar_datos_ia.py
 backend/app/core/pystats.py       motor estadístico local del Informe y el Cuaderno (Welch, χ², Fisher, proporciones, Bayes)
 backend/app/core/inference.py     inferencia en vivo del Informe (+ comprobación robusta por rangos), en Python local
 backend/app/core/ada_engine.py    motor de limpieza: Ada local, Ada remota o Python local (con aviso)
 backend/app/adapters/api/routes.py  API: /api/dataset/profile, /api/clean/*, /api/tstudent*, /api/inference
-frontend/src/views/               Fuente, Limpieza, Cuaderno, Inferencia, Informe
+frontend/src/views/               Fuente, Limpieza, Cuaderno, Tablero, Inferencia, Informe
 frontend/src/features/tstudent/   campana, medias, prueba paso a paso, permutación y neurona (SVG propio y animado)
+frontend/src/features/tablero/    cabecera, 11 escenas, reloj del modo película, barra de controles y modo presentación
+frontend/src/motion/              curvas, resortes y tiempos del movimiento; entrada escalonada; fondo animado
 frontend/src/features/charts/     LogHistogram, Funnel, Table2x2, Interval (SVG propio)
 frontend/src/lib/tdist.ts         densidad y probabilidades de la t (verificadas contra SciPy)
 ```
@@ -132,10 +151,11 @@ frontend/src/lib/tdist.ts         densidad y probabilidades de la t (verificadas
 
 ## Declaración de uso de IA
 
-Este panel (código, pruebas y textos de la interfaz) fue generado con asistencia de **Claude Code (Anthropic)** a petición de Diego López, a partir de la plantilla *Estadística Data*. **Ada** (motor de Diego López) se usa solo para perfilar y limpiar la base de datos; la estadística (t de Student, permutación, neurona, informe) se calcula en este equipo con Python (NumPy y SciPy), sin Ada ni ningún modelo de IA. Los resultados numéricos los producen scripts verificados, no la IA «a mano». Conforme a la regla del curso, **el grupo debe poder explicar cada línea y cada decisión**, y la parte analítica (hipótesis, interpretación, decisiones de limpieza, conclusiones del informe) se redacta y defiende por el grupo; este panel es una herramienta de apoyo, no el informe.
+Este panel (código, pruebas y textos de la interfaz) fue generado con asistencia de **Claude Code (Anthropic)** a petición de Diego López, a partir de la plantilla *Estadística Data*. Para el diseño y el movimiento del tablero se consultaron como guía dos *skills* públicos de terceros (MIT): [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) y [`remotion-motion-graphics`](https://github.com/haidrrrry/claude-remotion-skill); no se copió código suyo al proyecto. **Ada** (motor de Diego López) se usa solo para perfilar y limpiar la base de datos; la estadística (t de Student, permutación, neurona, informe) se calcula en este equipo con Python (NumPy y SciPy), sin Ada ni ningún modelo de IA. Los resultados numéricos los producen scripts verificados, no la IA «a mano». Conforme a la regla del curso, **el grupo debe poder explicar cada línea y cada decisión**, y la parte analítica (hipótesis, interpretación, decisiones de limpieza, conclusiones del informe) se redacta y defiende por el grupo; este panel es una herramienta de apoyo, no el informe.
 
 ## Referencias
 
 - Ferenc, R., Tóth, Z., Ladányi, G., Siket, I., & Gyimóthy, T. (2020). *Unified Bug Dataset* (v1.2) [Conjunto de datos]. Zenodo. https://doi.org/10.5281/zenodo.3693686
+- Cotroneo, D., Improta, C., & Liguori, P. (2025). Human-written vs. AI-generated code: A large-scale study of defects, vulnerabilities, and complexity. *ISSRE 2025*. arXiv:2508.21634. Artefacto: https://doi.org/10.5281/zenodo.16853222 (CC BY 4.0)
 - Shepperd, M., Song, Q., Sun, Z., & Mair, C. (2013). Data quality: Some comments on the NASA software defect datasets. *IEEE Transactions on Software Engineering, 39*(9), 1208–1215. https://doi.org/10.1109/TSE.2013.11
 - McCabe, T. J. (1976). A complexity measure. *IEEE Transactions on Software Engineering, SE-2*(4), 308–320.
