@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from app.core import ada_engine, ada_proceso, analisis_t, cleaning, config, ia_comparativa, inference, notebook, proceso, tablero, tstudent, workspace
+from app.core import ada_engine, ada_proceso, analisis_t, cleaning, codigo_neurona, config, ia_comparativa, inference, notebook, proceso, tablero, tstudent, workspace
 
 router = APIRouter(prefix="/api")
 
@@ -173,6 +173,12 @@ def tstudent_welch(alpha: float = 0.05, alternativa: Literal["two-sided", "great
 def tstudent_permutacion(repeticiones: int = 2000, semilla: int = tstudent.SEMILLA) -> dict:
     """Comprobación sin fórmulas: baraja las etiquetas con bug / sin bug y mira cuántas veces sale una t tan grande."""
     return _t(analisis_t.permutacion, repeticiones, semilla)
+
+
+@router.get("/codigo/neurona")
+def codigo_de_la_neurona() -> dict:
+    """El código Python real de la neurona (tomado de las funciones que se ejecutan), con su explicación."""
+    return {"cells": codigo_neurona.catalogo()}
 
 
 @router.get("/tstudent/neurona")

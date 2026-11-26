@@ -18,6 +18,9 @@ export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string) { super(message) }
 }
 
+/** Una celda de la pestaña «Código»: su explicación y el código Python real (o un ejemplo que no se ejecuta). */
+export interface CeldaCodigo { id: string; title: string; about: string; code: string; ejemplo: boolean }
+
 async function call<T>(path: string, init?: RequestInit, timeoutMs = 120_000): Promise<T> {
   const ctl = new AbortController()
   const timer = setTimeout(() => ctl.abort(), timeoutMs)
@@ -54,6 +57,7 @@ export const api = {
   // t de Student: calculada en este equipo con Python, sin Ada ni ninguna IA (la permutación y la neurona tardan unos segundos).
   tstudent: (alpha: number, alternativa: Alternativa) => call<TWelch>(`/api/tstudent?alpha=${alpha}&alternativa=${alternativa}`),
   permutacion: (repeticiones: number, semilla: number) => call<TPermutacion>(`/api/tstudent/permutacion?repeticiones=${repeticiones}&semilla=${semilla}`, undefined, 180_000),
+  codigoNeurona: () => call<{ cells: CeldaCodigo[] }>('/api/codigo/neurona'),
   neurona: () => call<TNeurona>('/api/tstudent/neurona', undefined, 180_000),
   // Tablero estadístico: cifras descriptivas del conjunto limpio e «IA frente a personas» (resultados agregados de Cotroneo et al., 2025).
   tablero: () => call<TTablero>('/api/tablero', undefined, 60_000),

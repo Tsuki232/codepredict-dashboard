@@ -196,3 +196,17 @@ def test_los_parametros_fuera_de_rango_se_rechazan(cliente):
     assert cliente.get("/api/tstudent/permutacion", params={"repeticiones": 10**7}).status_code == 422
     assert cliente.get("/api/tstudent", params={"alpha": 2}).status_code == 422
     assert cliente.get("/api/tstudent", params={"alternativa": "otra"}).status_code == 422
+
+
+def test_codigo_de_la_neurona_es_el_codigo_real():
+    from app.core import codigo_neurona, tstudent
+
+    celdas = codigo_neurona.catalogo()
+    assert [c["id"] for c in celdas] == ["datos", "sigmoide", "neurona", "newton", "metricas", "auc", "roc", "ejemplo_mlp"]
+    por_id = {c["id"]: c["code"] for c in celdas}
+    assert por_id["neurona"].startswith("def neurona(") and "_sigmoide(w * z[ent] + b)" in por_id["neurona"]
+    assert por_id["sigmoide"].startswith("def _sigmoide(") and "tstudent.neurona" in por_id["datos"]
+    assert all(c["title"] and c["about"] for c in celdas)
+    ej = celdas[-1]
+    assert ej["ejemplo"] is True and "def entrenar_red(" in ej["code"] and not any(c["ejemplo"] for c in celdas[:-1])
+    compile(ej["code"], "<ejemplo>", "exec")        # es Python válido (solo se compila: nunca se ejecuta)

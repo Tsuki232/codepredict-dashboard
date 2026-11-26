@@ -15,7 +15,9 @@ load_dotenv(ROOT / ".env")
 DIST = ROOT / "frontend" / "dist"
 
 from app.adapters.api.routes import router  # noqa: E402  (después de cargar .env: las rutas leen variables de entorno)
-from app.core import ada_engine, ada_proceso  # noqa: E402
+from app.core import ada_engine, ada_proceso, red  # noqa: E402
+
+red.ipv4_primero()    # Ada remota va por Cloudflare: con IPv6 roto en este equipo la conexión no terminaba nunca
 
 
 @asynccontextmanager

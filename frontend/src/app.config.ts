@@ -2,7 +2,7 @@
  * Configuración de la aplicación: nombre, menú y vistas.
  * Para añadir una vista: 1) agrega su id a `ViewId`, 2) agrégala a `NAV`, 3) regístrala en `VIEWS` (src/App.tsx).
  */
-import { Database, FileText, FlaskConical, LayoutDashboard, NotebookPen, ScanSearch } from 'lucide-react'
+import { Code, Database, FileText, FlaskConical, LayoutDashboard, NotebookPen, ScanSearch } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export const APP = {
@@ -11,7 +11,7 @@ export const APP = {
   footer: ['Estadística Inferencial y Ciencia de Datos', 'Unified Bug Dataset · nivel archivo'],
 }
 
-export type ViewId = 'fuente' | 'limpieza' | 'cuaderno' | 'tablero' | 'inferencia' | 'informe'
+export type ViewId = 'fuente' | 'limpieza' | 'cuaderno' | 'tablero' | 'inferencia' | 'codigo' | 'informe'
 export const DEFAULT_VIEW: ViewId = 'fuente'
 
 export interface NavItem { id: ViewId; label: string; short: string; title: string; icon: LucideIcon }
@@ -31,6 +31,7 @@ export const NAV: NavGroup[] = [
     items: [
       { id: 'tablero', label: 'Tablero estadístico', short: 'Tablero', title: 'Tablero estadístico con modo película', icon: LayoutDashboard },
       { id: 'inferencia', label: 'Inferencia', short: 'Inferencia', title: 'Inferencia con la t de Student', icon: FlaskConical },
+      { id: 'codigo', label: 'Código de la neurona', short: 'Código', title: 'Código Python de la red neuronal', icon: Code },
       { id: 'informe', label: 'Informe en vivo', short: 'Informe', title: 'Informe en vivo y PDF', icon: FileText },
     ],
   },

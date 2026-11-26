@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react'
 import { SeccionCampana } from '../features/tstudent/SeccionCampana'
 import { SeccionMedias } from '../features/tstudent/SeccionMedias'
 import { SeccionNeurona } from '../features/tstudent/SeccionNeurona'
+import { SeccionOficina } from '../features/tstudent/SeccionOficina'
 import { SeccionPermutacion } from '../features/tstudent/SeccionPermutacion'
 import { SeccionPrueba } from '../features/tstudent/SeccionPrueba'
+import { SeccionTabla } from '../features/tstudent/SeccionTabla'
 import type { TWelch } from '../features/tstudent/tipos'
 import { api } from '../lib/api'
 import { fmt, fmtP } from '../lib/format'
@@ -89,10 +91,12 @@ export function InferenciaView() {
           </p>
 
           <SeccionCampana glDatos={w.gl} alpha={w.alpha} />
+          <SeccionTabla gl={w.gl} alpha={w.alpha} />
           <SeccionMedias w={w} />
           <SeccionPrueba w={w} />
           <SeccionPermutacion w={w} sha={w.meta.sha256} />
           <SeccionNeurona sha={w.meta.sha256} />
+          <SeccionOficina sha={w.meta.sha256} />
 
           <Panel title="6. Supuestos y límites (para decirlos en la exposición)" note="Lo que la prueba necesita para ser válida y lo que no puede afirmar.">
             <ul className="small flex list-disc flex-col gap-2 pl-5" style={{ color: 'var(--ink-2)' }}>

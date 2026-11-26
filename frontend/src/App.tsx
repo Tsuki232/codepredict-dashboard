@@ -15,6 +15,7 @@ const LimpiezaView = lazy(() => import('./views/LimpiezaView').then((m) => ({ de
 const CuadernoView = lazy(() => import('./views/CuadernoView').then((m) => ({ default: m.CuadernoView })))
 const InformeView = lazy(() => import('./views/InformeView').then((m) => ({ default: m.InformeView })))
 const InferenciaView = lazy(() => import('./views/InferenciaView').then((m) => ({ default: m.InferenciaView })))
+const CodigoView = lazy(() => import('./views/CodigoView').then((m) => ({ default: m.CodigoView })))
 const TableroView = lazy(() => import('./views/TableroView').then((m) => ({ default: m.TableroView })))
 
 const VIEWS: Record<ViewId, ComponentType> = {
@@ -23,6 +24,7 @@ const VIEWS: Record<ViewId, ComponentType> = {
   cuaderno: CuadernoView,
   tablero: TableroView,
   inferencia: InferenciaView,
+  codigo: CodigoView,
   informe: InformeView,
 }
 
